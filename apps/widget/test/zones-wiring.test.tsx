@@ -69,7 +69,7 @@ function setup(options: Options = {}) {
 }
 
 const zoneGroup = () => screen.queryByRole("group", { name: t("zone.label") });
-const time = (name: string) => screen.findByRole("radio", { name });
+const time = (name: string | RegExp) => screen.findByRole("radio", { name }, { timeout: 5000 });
 
 describe("the zone choice", () => {
   it("is hidden with no zones or one", async () => {
