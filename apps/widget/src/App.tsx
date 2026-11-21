@@ -222,6 +222,8 @@ function BookingForm(props: {
     party !== "more" && (times.kind === "closed" || (times.kind === "loaded" && times.times.length === 0 && !times.reason));
   const freeDay = noFreeDay && date ? nextFreeDay(stripDays, date) : null;
   const bounds = pageBounds({ from: stripFrom, today, last: maxDate });
+  const prevStripDate = bounds.prev;
+  const nextStripDate = bounds.next;
   const pick = (day: string) => {
     setDate(day);
     setTime("");
@@ -327,8 +329,8 @@ function BookingForm(props: {
               t={t}
               locale={locale}
               onSelect={pick}
-              onPrev={bounds.prev ? () => setStripFrom(bounds.prev!) : undefined}
-              onNext={bounds.next ? () => setStripFrom(bounds.next!) : undefined}
+              onPrev={prevStripDate ? () => setStripFrom(prevStripDate) : undefined}
+              onNext={nextStripDate ? () => setStripFrom(nextStripDate) : undefined}
             />
           )}
 
