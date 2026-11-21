@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { ConsentSelect } from "@/components/reservation/consent-select";
 import { StaffNoteField } from "@/components/reservation/staff-note-field";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX, type Consent, type Reservation } from "@/lib/api";
 import { formatReservationCommentary, parseReservationCommentary } from "@/lib/reservation-commentary";
@@ -115,35 +115,35 @@ export function EditReservationDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Field>
-            <FieldLabel htmlFor="edit-guest-name">{t("reservation.guestName")}</FieldLabel>
+          <div className="space-y-2">
+            <Label htmlFor="edit-guest-name">{t("reservation.guestName")}</Label>
             <Input id="edit-guest-name" maxLength={200} {...register("name")} />
-          </Field>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="edit-date">{t("reservation.edit.date")}</FieldLabel>
+            <div className="space-y-2">
+              <Label htmlFor="edit-date">{t("reservation.edit.date")}</Label>
               <Input id="edit-date" type="date" disabled={reservation?.status === "attended"}
                 {...register("date", { required: true })} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="edit-time">{t("reservation.edit.time")}</FieldLabel>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-time">{t("reservation.edit.time")}</Label>
               <Controller name="time" control={control} rules={{ required: true }}
                 render={({ field }) => (
                   <TimeField id="edit-time" label={t("reservation.edit.time")} value={field.value} onChange={field.onChange}
                     onBlur={field.onBlur} disabled={reservation?.status === "attended"} />
                 )}
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="edit-party-size">{t("reservation.partySize")}</FieldLabel>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-party-size">{t("reservation.partySize")}</Label>
               <Input id="edit-party-size" type="number" min={1} disabled={reservation?.status === "attended"}
                 {...register("partySize", { valueAsNumber: true, min: 1 })} />
-              <FieldError>{errors.partySize && t("reservation.atLeastOne")}</FieldError>
-            </Field>
+              {errors.partySize && <p role="alert" className="text-sm text-destructive">{t("reservation.atLeastOne")}</p>}
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">{t("reservation.edit.scheduleHelp")}</p>
-          <Field>
-            <FieldLabel htmlFor="edit-consent">{t("reservation.contactConsent")}</FieldLabel>
+          <div className="space-y-2">
+            <Label htmlFor="edit-consent">{t("reservation.contactConsent")}</Label>
             <Controller
               name="consent"
               control={control}
@@ -151,10 +151,10 @@ export function EditReservationDialog({
                 <ConsentSelect id="edit-consent" value={field.value} onChange={field.onChange} />
               )}
             />
-          </Field>
+          </div>
 
-          <Field>
-            <FieldLabel>{t("reservation.edit.rating")}</FieldLabel>
+          <div className="space-y-2">
+            <Label>{t("reservation.edit.rating")}</Label>
             <Controller
               name="rating"
               control={control}
@@ -174,7 +174,7 @@ export function EditReservationDialog({
                 </Select>
               )}
             />
-          </Field>
+          </div>
 
           <StaffNoteField
             id="edit-commentary"
