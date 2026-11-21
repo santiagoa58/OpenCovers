@@ -76,8 +76,9 @@ describe("FloorView", () => {
     await user.click(screen.getByRole("button", { name: "Next day" }));
     expect(date).toHaveValue(shiftIso(today, 1));
 
-    fireEvent.change(date, { target: { value: "2026-11-21" } });
-    expect(date).toHaveValue("2026-11-21");
+    const chosenDate = shiftIso(today, 7);
+    fireEvent.change(date, { target: { value: chosenDate } });
+    expect(date).toHaveValue(chosenDate);
     await user.click(screen.getByRole("button", { name: "Today" }));
     expect(date).toHaveValue(today);
   });
