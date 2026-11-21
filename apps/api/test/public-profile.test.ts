@@ -89,6 +89,7 @@ describe("public profile and JSON-LD", () => {
 
   it("rejects invalid input", async () => {
     const bad: unknown[] = [
+      {},
       { publicProfileEnabld: true },
       { cuisine: "Italian", publicProfileEnabld: true },
       { websiteUrl: "http://example.com" },
