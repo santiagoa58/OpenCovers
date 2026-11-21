@@ -8,7 +8,8 @@ import { logoSrc } from "./theme";
 export function Section({ title, focus = false, children }: { title: string; focus?: boolean; children: ReactNode }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    if (focus) heading.current?.focus();
+    // Refocus when navigating between steps, including steps that reuse this component.
+    if (focus && heading.current?.textContent === title) heading.current.focus();
   }, [focus, title]);
   return (
     <section className="space-y-4">
