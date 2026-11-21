@@ -158,6 +158,34 @@ describe("reservations", () => {
     expect(invalid).toEqual({ ok: false, code: "invalid_transition" });
   });
 
+  it("restores a completed reservation and reclaims its table", async () => {
+    await seedVenue("status-undo");
+    const created = await createReservation(db, "status-undo", input, "undo-k1");
+    if (!created.ok) throw new Error("create failed");
+    await setStatus(db, "status-undo", created.id, "seated", "undo-k2", null);
+    await setStatus(db, "status-undo", created.id, "attended", "undo-k3", null);
+
+    const restored = await setStatus(db, "status-undo", created.id, "booked", "undo-k4", null);
+    expect(restored).toEqual({ ok: true, id: created.id, version: 4 });
+    expect((await getReservation(db, "status-undo", created.id))?.status).toBe("booked");
+    const allocations = await db.select().from(tableAllocations).where(eq(tableAllocations.reservationId, created.id));
+    expect(allocations[0]?.active).toBe(true);
+  });
+
+  it("refuses an undo that would double-book an occupied table", async () => {
+    await seedVenue("status-undo-conflict");
+    const first = await createReservation(db, "status-undo-conflict", input, "conflict-k1");
+    if (!first.ok) throw new Error("create failed");
+    await setStatus(db, "status-undo-conflict", first.id, "seated", "conflict-k2", null);
+    await setStatus(db, "status-undo-conflict", first.id, "attended", "conflict-k3", null);
+    const second = await createReservation(db, "status-undo-conflict", input, "conflict-k4");
+    expect(second.ok).toBe(true);
+
+    expect(await setStatus(db, "status-undo-conflict", first.id, "booked", "conflict-k5", null))
+      .toEqual({ ok: false, code: "slot_taken" });
+    expect((await getReservation(db, "status-undo-conflict", first.id))?.status).toBe("attended");
+  });
+
   it("cancels and reports already_cancelled", async () => {
     await seedVenue("cancel");
     const created = await createReservation(db, "cancel", input, "k1");
@@ -193,6 +221,8 @@ describe("reservations", () => {
     await seedVenue("floor");
     await createReservation(db, "floor", { ...input, tableIds: ["1"], guestName: "Ana" }, "k1");
 
+    const exactlyOnArrival = await getFloorPlan(db, "floor", "2026-11-12", "21:00");
+    expect(exactlyOnArrival.find((t) => t.id === "1")?.occupied).toBe(true);
     const during = await getFloorPlan(db, "floor", "2026-11-12", "21:30");
     expect(during.find((t) => t.id === "1")?.occupied).toBe(true);
     expect(during.find((t) => t.id === "1")?.guestName).toBe("Ana");
