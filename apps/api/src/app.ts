@@ -613,7 +613,8 @@ app.post("/v1/venues", async (c) => {
   const parsed = createVenueSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return error(c, "invalid_request");
   const body = parsed.data;
-  const timezone = body.timezone;
+  // Venue creation has historically treated null as the default UTC timezone.
+  const timezone = body.timezone ?? undefined;
   if (timezone !== undefined && !isValidTimeZone(timezone)) return error(c, "invalid_request");
   const { id } = await createVenue(db, user.id, { name: body.name, timezone });
   return c.json({ venue: { id, name: body.name } }, 201);
