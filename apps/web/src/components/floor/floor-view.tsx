@@ -1,6 +1,6 @@
 import { errorMessage } from "@/lib/error-message";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArmchairIcon, PlusIcon, PrinterIcon, UserRoundCheckIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DayNav } from "@/components/day-nav";
@@ -42,8 +42,16 @@ export function FloorView({ venueId }: { venueId: string }) {
   const queryClient = useQueryClient();
   const { data, isPending, isError, error, isRefetching, refetch } = useFloor(venueId, date, time);
   const { data: itemsData } = useFloorItems(venueId);
+  // Snapshot occupancy and availability over the entire booking duration are different.
+  const bookingAvailability = useQuery({
+    queryKey: ["table-availability", venueId, date, time, 1],
+    queryFn: () => api.getTableAvailability(venueId, date, time, 1),
+  });
 
   const tables = data?.tables ?? [];
+  const bookability = new Map((bookingAvailability.data?.tables ?? []).map((table) => [table.id, table.available]));
+  const bookingTables = tables.map((table) => ({ ...table, bookable: bookability.get(table.id) }));
+  const bookableCount = bookingAvailability.data ? bookingTables.filter((table) => table.bookable).length : null;
   const items = itemsData?.items ?? [];
 
   const occupied = tables.filter((t) => t.occupied).length;
@@ -134,6 +142,12 @@ export function FloorView({ venueId }: { venueId: string }) {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-sm">
             <Legend tone="free" label={t("floor.free")} value={free} />
             <Legend tone="occupied" label={t("floor.occupied")} value={occupied} />
+            {bookableCount !== null && (
+              <span className="font-medium tabular-nums">{t("floor.planning.bookable", { count: bookableCount })}</span>
+            )}
+            {bookingAvailability.isError && (
+              <span role="status" className="text-destructive">{t("floor.planning.availabilityError")}</span>
+            )}
             <span className="text-muted-foreground tabular-nums">{t("floor.seatedCovers", { count: seatedCovers })}</span>
           </div>
         )}
@@ -157,7 +171,7 @@ export function FloorView({ venueId }: { venueId: string }) {
           />
         ) : (
           <FloorCanvas
-            tables={tables}
+            tables={bookingTables}
             items={items}
             mode="view"
             venueId={venueId}
