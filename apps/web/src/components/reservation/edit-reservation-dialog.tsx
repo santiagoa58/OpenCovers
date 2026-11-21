@@ -25,6 +25,8 @@ import {
 import { ConsentSelect } from "@/components/reservation/consent-select";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX, type Consent, type Reservation } from "@/lib/api";
+import { useTimeDisplay } from "@/lib/time-format";
+import { useUiStore } from "@/stores/ui-store";
 
 interface EditValues {
   name: string;
@@ -60,12 +62,15 @@ export function EditReservationDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
+  const timeFormat = useUiStore((s) => s.timeFormat);
   const queryClient = useQueryClient();
   const {
     handleSubmit,
     reset,
     control,
     register,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<EditValues>({ defaultValues: toValues(reservation) });
 
@@ -125,6 +130,9 @@ export function EditReservationDialog({
               <Label htmlFor="edit-time">{t("reservation.edit.time")}</Label>
               <Input id="edit-time" type="time" step={900} disabled={reservation?.status === "attended"}
                 {...register("time", { required: true })} />
+              {timeFormat === "12h" && (
+                <p className="text-xs text-muted-foreground">{displayTime(watch("time"))}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-party-size">{t("reservation.partySize")}</Label>
