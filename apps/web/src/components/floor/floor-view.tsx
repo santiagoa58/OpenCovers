@@ -19,10 +19,14 @@ import { useFloorItems } from "@/hooks/use-floor-items";
 import { api, type FloorTable } from "@/lib/api";
 import { useT } from "@/i18n";
 import { nowTime, todayIso } from "@/lib/date";
+import { useTimeDisplay } from "@/lib/time-format";
+import { useUiStore } from "@/stores/ui-store";
 
 export function FloorView({ venueId }: { venueId: string }) {
   const t = useT();
   const nav = useNavigation();
+  const displayTime = useTimeDisplay();
+  const timeFormat = useUiStore((s) => s.timeFormat);
   const [date, setDate] = useState(todayIso());
   const [time, setTime] = useState(nowTime());
   const [seatTable, setSeatTable] = useState<FloorTable | null>(null);
@@ -71,10 +75,14 @@ export function FloorView({ venueId }: { venueId: string }) {
           <Input
             type="time"
             aria-label={t("floor.time")}
+            lang={timeFormat === "12h" ? "en-US" : "en-GB"}
             value={time}
             onChange={(e) => setTime(e.target.value)}
             className="w-fit"
           />
+          {timeFormat === "12h" && (
+            <span className="text-sm tabular-nums text-muted-foreground">{displayTime(time)}</span>
+          )}
           <Button
             variant="outline"
             onClick={() => {
