@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRightLeftIcon, XIcon } from "lucide-react";
 import { StatusBadge } from "@/components/agenda/status-badge";
 import { ReconfirmationPill } from "@/components/preshift/pre-shift-view";
+import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -260,7 +261,7 @@ function CardBody({
               <ReconfirmationPill value={r.reconfirmation} />
             </Row>
           )}
-          {r.commentary && <Row label={t("floor.card.notes")}>{r.commentary}</Row>}
+          <ReservationAnnotations commentary={r.commentary} variant="details" />
         </dl>
       )}
 
