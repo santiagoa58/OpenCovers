@@ -18,6 +18,9 @@
     "db:seed-demo": "pnpm --filter @opencovers/api db:seed-demo",
     "demo:seed": "pnpm --filter @opencovers/api demo:seed",
     "demo:cleanup": "pnpm --filter @opencovers/api demo:cleanup",
-    "demo:leads": "pnpm --filter @opencovers/api demo:leads"
+    "demo:leads": "pnpm --filter @opencovers/api demo:leads",
+    "lint": "pnpm dlx @biomejs/biome@2.6.8 lint apps",
+    "format:check": "pnpm dlx @biomejs/biome@2.6.8 format apps",
+    "format": "pnpm dlx @biomejs/biome@2.6.8 format --write apps"
   }
 }
