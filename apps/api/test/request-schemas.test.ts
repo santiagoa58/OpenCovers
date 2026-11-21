@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { floorItemSchema, serviceSchema, tableLayoutSchema, tableSchema } from "../src/http/room-schemas";
 import { venueConfigSchema, webhookCreateSchema } from "../src/http/venue-settings-schemas";
 import { staffReservationSchema, staffWalkInSchema, staffModifySchema, staffStatusSchema, staffWaitlistSchema } from "../src/http/staff-reservation-schemas";
-import { createVenueSchema, invitationSchema, instanceKeySchema, venueKeySchema, erasureSchema, mergeGuestSchema } from "../src/http/admin-schemas";
+import { createVenueSchema, invitationSchema, instanceKeySchema, venueKeySchema, erasureSchema, mergeGuestSchema, blocklistAddSchema, blocklistSubjectSchema } from "../src/http/admin-schemas";
 import { parseDays } from "../src/lib/catalog";
 import { parseTurnTimes } from "../src/lib/turn-times";
 
@@ -19,6 +19,12 @@ describe("request schemas", () => {
     expect(venueKeySchema.safeParse({ key: "secret", principal: "agent", role: "admin" }).success).toBe(false);
     expect(mergeGuestSchema.safeParse({ intoGuestId: null }).success).toBe(false);
     expect(erasureSchema.safeParse({ guestId: 123 }).success).toBe(false);
+    expect(blocklistAddSchema.safeParse({ contact: "ana@example.com" }).success).toBe(true);
+    expect(blocklistAddSchema.safeParse({ contact: "ana@example.com", reason: null }).success).toBe(true);
+    expect(blocklistAddSchema.safeParse({ contact: "ana@example.com", reason: "no_show" }).success).toBe(true);
+    expect(blocklistAddSchema.safeParse({ contact: "ana@example.com", reason: "free text" }).success).toBe(false);
+    expect(blocklistAddSchema.safeParse({ contact: "ana@example.com", reason: 0 }).success).toBe(false);
+    expect(blocklistSubjectSchema.safeParse({ guestId: "g1", reason: null }).success).toBe(false);
   });
 
   it("rejects malformed or unexpected staff reservation fields instead of silently dropping them", () => {
