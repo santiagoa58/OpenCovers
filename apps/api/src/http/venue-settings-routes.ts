@@ -7,7 +7,7 @@ import { createWebhook, deleteWebhook, listWebhooks, webhookPolicyFromEnv } from
 import { toCountryCode } from "../lib/contact";
 import { parseTurnTimes } from "../lib/turn-times";
 import { venueConfigSchema, webhookCreateSchema } from "./venue-settings-schemas";
-import { parseBlockedDates } from "../lib/booking-policy";
+import { parseBlockedDates, type DateRange } from "../lib/booking-policy";
 import type { AppEnv } from "./types";
 import { sendError } from "./send-error";
 
@@ -44,13 +44,14 @@ app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
     if (normalized === null) return sendError(c, "invalid_request");
     body.turnTimes = normalized;
   }
+  let blockedDates: DateRange[] | undefined;
   if (body.blockedDates !== undefined) {
     const normalized = parseBlockedDates(body.blockedDates);
     if (normalized === null) return sendError(c, "invalid_request");
-    body.blockedDates = normalized;
+    blockedDates = normalized;
   }
 
-  const result = await setConfig(db, venueId, { ...body, phoneCountry });
+  const result = await setConfig(db, venueId, { ...body, phoneCountry, blockedDates });
   if (!result.ok) return sendError(c, result.code);
   return c.json(result.config);
 });
