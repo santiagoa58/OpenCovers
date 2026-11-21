@@ -94,6 +94,14 @@ describe("tables on every reservation read", () => {
     expect((await get(`/reservations/${missed.id}`)).tables).toEqual(["2"]);
   });
 
+  it("returns each reservation's actual allocated duration", async () => {
+    const created = await create({ date: "2026-11-19", time: "20:00", tables: ["11"] });
+    expect(created.durationMinutes).toBe(120);
+    expect((await get(`/reservations/${created.id}`)).durationMinutes).toBe(120);
+    const day = await get("/agenda?date=2026-11-19");
+    expect(day.reservations.find((r: { id: string }) => r.id === created.id)?.durationMinutes).toBe(120);
+  });
+
   it("returns an empty list after cancel", async () => {
     const created = await create({ date: "2026-11-18", tables: ["3"] });
     const res = await post(`/reservations/${created.id}/cancel`, {});

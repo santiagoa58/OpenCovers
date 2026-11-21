@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Reservation, Table } from "@/lib/api";
-import { bookingMinutes, peakSimultaneousParties, planningConflicts } from "./planning-conflicts";
+import { allocatedMinutes, bookingMinutes, peakSimultaneousParties, planningConflicts, tightTurnovers } from "./planning-conflicts";
 const table = (id: string): Table => ({ id, name: id, seats: 4, zone: "", shape: "round", posX: 0, posY: 0, rotation: 0 });
 const booking = (id: string, time: string, tableId: string, status = "booked"): Reservation => ({
   id, venueId: "v1", date: "2026-11-21", time, partySize: 2, status, service: "dinner",
@@ -37,6 +37,23 @@ describe("planning conflicts", () => {
     expect(peakSimultaneousParties(guests, ninety)).toBe(3);
     expect(peakSimultaneousParties(guests, [{ upTo: 1000, minutes: 15 }])).toBe(1);
     expect(peakSimultaneousParties([...guests, booking("D", "17:45", "4", "cancelled")], ninety)).toBe(3);
+  });
+
+  it("uses the actual stored 60-minute allocation instead of incorrectly assuming 90", () => {
+    const earlier = { ...booking("First", "17:00", "1"), durationMinutes: 60 };
+    const later = { ...booking("Next", "18:00", "1"), durationMinutes: 90 };
+    expect(allocatedMinutes(earlier, ninety)).toBe(60);
+    expect(planningConflicts([earlier, later], [table("1")], ninety)).toHaveLength(0);
+    expect(peakSimultaneousParties([earlier, later], ninety)).toBe(1);
+    const turns = tightTurnovers([earlier, later], [table("1")], ninety);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]).toMatchObject({ tableName: "1", earlier: { id: "First" }, later: { id: "Next" } });
+  });
+
+  it("does not mistake gaps or cancellations for a rushed reset", () => {
+    const first = { ...booking("A", "17:00", "1"), durationMinutes: 60 };
+    const gap = { ...booking("B", "18:15", "1"), durationMinutes: 90 };
+    expect(tightTurnovers([first, gap, booking("X", "18:00", "1", "cancelled")], [table("1")], ninety)).toEqual([]);
   });
 
 });
