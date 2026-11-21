@@ -58,3 +58,30 @@ export function planningConflicts(
   }
   return result.sort((a, b) => a.later.time.localeCompare(b.later.time) || a.tableName.localeCompare(b.tableName));
 }
+
+// Counts simultaneous parties, not guests: a venue cannot seat more separate parties than tables
+// without explicitly agreed table sharing, even if the total guest count is below seat capacity.
+export function peakSimultaneousParties(
+  reservations: Reservation[],
+  turnTimes: { upTo: number; minutes: number }[] | undefined,
+): number {
+  const active = reservations.filter((r) => ACTIVE.has(r.status));
+  if (!active.length) return 0;
+  const firstDate = active.reduce((min, r) => r.date < min ? r.date : min, active[0].date);
+  const origin = Date.parse(firstDate + "T00:00:00Z");
+  const events: { minute: number; delta: number }[] = [];
+  for (const reservation of active) {
+    const day = Math.round((Date.parse(reservation.date + "T00:00:00Z") - origin) / 60000);
+    const start = day + toMinutes(reservation.time);
+    events.push({ minute: start, delta: 1 }, { minute: start + bookingMinutes(turnTimes, reservation.partySize), delta: -1 });
+  }
+  // An end at 18:00 does not overlap a new reservation starting at 18:00.
+  events.sort((a, b) => a.minute - b.minute || a.delta - b.delta);
+  let count = 0;
+  let peak = 0;
+  for (const event of events) {
+    count += event.delta;
+    peak = Math.max(peak, count);
+  }
+  return peak;
+}

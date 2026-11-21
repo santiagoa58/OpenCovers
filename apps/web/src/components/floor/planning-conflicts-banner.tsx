@@ -3,7 +3,7 @@ import { AlertTriangleIcon } from "lucide-react";
 import { useAgenda } from "@/hooks/use-agenda";
 import { useTables } from "@/hooks/use-tables";
 import { useVenueConfig } from "@/hooks/use-venue-config";
-import { planningConflicts } from "@/lib/planning-conflicts";
+import { peakSimultaneousParties, planningConflicts } from "@/lib/planning-conflicts";
 import { useTimeDisplay } from "@/lib/time-format";
 import { useT } from "@/i18n";
 
@@ -18,8 +18,11 @@ export function PlanningConflictsBanner({ venueId, date }: { venueId: string; da
     if (!agenda.data || !tables.data || !config.data) return [];
     return planningConflicts(agenda.data.reservations, tables.data.tables, config.data.turnTimes);
   }, [agenda.data, tables.data, config.data]);
-  if (!agenda.data || !tables.data || !config.data || !conflicts.length) return null;
+  if (!agenda.data || !tables.data || !config.data) return null;
   const duration = config.data.turnTimes?.[0]?.minutes ?? 120;
+  const peakParties = peakSimultaneousParties(agenda.data.reservations, config.data.turnTimes);
+  const capacityConflict = peakParties > tables.data.tables.length;
+  if (!conflicts.length && !capacityConflict) return null;
   return (
     <details className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3" data-testid="floor-planning-conflicts">
       <summary className="flex cursor-pointer items-start gap-3 text-sm font-medium">
@@ -27,6 +30,11 @@ export function PlanningConflictsBanner({ venueId, date }: { venueId: string; da
         <span>{t("floor.planning.conflicts", { count: conflicts.length, minutes: duration })}</span>
       </summary>
       <p className="mt-2 text-sm text-muted-foreground">{t("floor.planning.details")}</p>
+      {capacityConflict && (
+        <p className="mt-2 font-medium text-sm text-destructive" data-testid="floor-peak-parties-warning">
+          {t("floor.planning.insufficientTables", { parties: peakParties, tables: tables.data.tables.length })}
+        </p>
+      )}
       <ul className="mt-3 space-y-2 text-sm">
         {conflicts.map(({ tableId, tableName, earlier, later, overlapMinutes }) => (
           <li key={`${tableId}:${earlier.id}:${later.id}`} className="border-t pt-2">
