@@ -93,8 +93,16 @@ EXISTING_AUTH_ORIGIN="$(printf '%s' "$EXISTING_CONFIG" | jq -r \
 EXISTING_TRUSTED_ORIGINS="$(printf '%s' "$EXISTING_CONFIG" | jq -r \
   '[.spec.template.spec.containers[]? | select(.name=="api") | .env[]? | select(.name=="TRUSTED_ORIGINS") | .value][0] // empty')"
 
-# PUBLIC_URL is a deliberate switch to a verified custom HTTPS domain.
-# Do not set it while the domain's certificate is pending.
+# Never switch Better Auth to a pending certificate / unready custom domain.
+# This allows CI to deploy normally even when the repository's PUBLIC_URL
+# variable was configured before Google finishes certificate provisioning.
+if [[ -n "${PUBLIC_URL:-}" ]]; then
+  if ! curl --fail --silent --show-error --max-time 20 \
+    --output /dev/null "${PUBLIC_URL%/}/health"; then
+    echo "Public URL not serving a healthy HTTPS endpoint yet; preserving the existing Better Auth origin." >&2
+    PUBLIC_URL=""
+  fi
+fi
 if [[ -z "${PUBLIC_URL:-}" && -n "$EXISTING_URL" && -z "$EXISTING_AUTH_ORIGIN" ]]; then
   echo 'Cannot read the existing Better Auth origin; refusing to change it. Set PUBLIC_URL explicitly after checking HTTPS.' >&2
   exit 1
@@ -147,6 +155,7 @@ APP_URL="$(gcloud run services describe "$SERVICE" \
 # First deployment has no run.app URL until Cloud Run has created the service.
 if [[ "$APP_ORIGIN" == "https://placeholder.invalid" ]]; then
   APP_ORIGIN="$APP_URL"
+  TRUSTED_ORIGINS="$APP_URL"
   gcloud run services update "$SERVICE" \
     --project "$PROJECT_ID" --region "$REGION" --quiet --container=api \
     --update-env-vars="^@^BETTER_AUTH_URL=${APP_ORIGIN}@TRUSTED_ORIGINS=${TRUSTED_ORIGINS}@SIGNUP=${SIGNUP}"
