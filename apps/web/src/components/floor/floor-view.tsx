@@ -69,7 +69,7 @@ export function FloorView({ venueId }: { venueId: string }) {
               variant="outline"
               className="shrink-0 px-3"
               onClick={() => {
-                setUrlParams({ date: todayIso(), time: nowTime() });
+                setUrlParams({ date: todayIso(), time: nowTime() }, "replace");
               }}
             >
               {t("floor.now")}
@@ -94,7 +94,7 @@ export function FloorView({ venueId }: { venueId: string }) {
             <p className="mt-1 text-sm text-muted-foreground">{t("floor.room.description")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg border bg-card px-3 py-1.5 text-sm font-medium tabular-nums">
+            <span data-testid="floor-selected-time" className="text-sm text-muted-foreground tabular-nums">
               {t("floor.timeline.selected", { time: displayTime(time) })}
             </span>
             {tables.length > 0 && <FloorSkinToggle />}

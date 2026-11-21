@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { nowTime, todayIso } from "@/lib/date";
 
 const EVENT = "opencovers:url-change";
@@ -52,10 +52,22 @@ export function useUrlDate(): [string, (date: string) => void] {
   }];
 }
 
+const validTime = (value: string | null): value is string =>
+  Boolean(value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value));
+
+/** One snapshot time per floor view, persisted in the URL but never added to Back history. */
 export function useUrlTime(): [string, (time: string) => void] {
   const value = useUrlParam("time");
-  return [value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : nowTime(), (time) => {
-    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) setUrlParams({ time });
+  const [initialTime] = useState(nowTime);
+
+  // Do not silently drift with the wall clock on ordinary React re-renders.
+  // A missing/invalid parameter is normalized for refresh and deep-link consistency.
+  useEffect(() => {
+    if (!validTime(value)) setUrlParams({ time: initialTime }, "replace");
+  }, [value, initialTime]);
+
+  return [validTime(value) ? value : initialTime, (time) => {
+    if (validTime(time)) setUrlParams({ time }, "replace");
   }];
 }
 

@@ -27,3 +27,30 @@ export function peakSlot(slots: PacingSlot[]): PacingSlot | null {
   }
   return peak;
 }
+
+/** The real service-slot window covering a selected instant, even off quarter-hours. */
+export function pacingSlotAtTime(
+  time: string,
+  slots: PacingSlot[],
+): { slot: PacingSlot; start: number; end: number } | null {
+  const toMinutes = (value: string) => {
+    const [hour, minute] = value.split(":").map(Number);
+    return hour * 60 + minute;
+  };
+  const selected = toMinutes(time);
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const start = toMinutes(slot.time);
+    const next = slots[i + 1] ? toMinutes(slots[i + 1].time) : null;
+    const previous = i > 0 ? toMinutes(slots[i - 1].time) : null;
+    const interval = next !== null && next > start
+      ? next - start
+      : previous !== null && start > previous
+        ? start - previous
+        : 15;
+    if (selected >= start && selected < start + interval) {
+      return { slot, start, end: start + interval };
+    }
+  }
+  return null;
+}
