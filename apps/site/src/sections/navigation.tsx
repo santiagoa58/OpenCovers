@@ -35,7 +35,11 @@ function useStars() {
   return stars;
 }
 
-const fmtStars = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+function fmtStars(count: number): string {
+  if (count < 1000) return String(count);
+  const decimals = count >= 10000 ? 0 : 1;
+  return `${(count / 1000).toFixed(decimals)}k`;
+}
 
 export function GithubButton() {
   const stars = useStars();
