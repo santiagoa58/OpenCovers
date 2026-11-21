@@ -124,8 +124,8 @@ a { color: inherit; }
 .ctl .row span { font-size: 0.45em; letter-spacing: 0; color: var(--muted); }
 .ctl .row[data-taken="true"] { background: var(--surface); }
 .ctl .row[data-taken="true"]::before { background: var(--ink); }
-.ctl .row[aria-checked="true"] { background: var(--ink); color: #fff; }
-.ctl .row[aria-checked="true"] span { color: #fff; }
+.ctl .row[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.ctl .row[aria-pressed="true"] span { color: #fff; }
 .ctl .go { margin-top: 0.25em; height: 1.5em; padding: 0 1em; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-family: var(--display); font-size: 1em; font-weight: 700; letter-spacing: -0.03em; cursor: pointer; transition: transform 0.25s var(--ease); }
 .ctl .go:hover { transform: scale(1.04); }
 @media (max-width: 860px) {
