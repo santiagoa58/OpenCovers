@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
 import { canEditSetup, useNavigation } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
+import { DayNav } from "@/components/day-nav";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
@@ -65,13 +66,7 @@ export function FloorView({ venueId }: { venueId: string }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            type="date"
-            aria-label={t("floor.date")}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-fit"
-          />
+          <DayNav date={date} onChange={setDate} />
           <Input
             type="time"
             aria-label={t("floor.time")}
