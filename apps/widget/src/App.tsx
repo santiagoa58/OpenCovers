@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 import { type Created, type Failure, type PublicApi, type PublicConfig, type PublicDay, type PublicSlot } from "./api";
 import { DayStrip } from "./DayStrip";
 import { addDays, formatDate, isoWeekday, todayLocal } from "./dates";
@@ -9,7 +9,7 @@ import { solveInBackground } from "./pow";
 import { dateAfterPartyChange, nextFreeDay, pageBounds, startFor, STRIP_DAYS, visibleDays } from "./strip";
 import { createSubmitter, createTicketSource } from "./submit";
 import { noticeHref, watchTheme } from "./theme";
-import { Field, inputClass, primaryButton, secondaryButton, Section, VenueHeader } from "./ui";
+import { Field, chipClass, inputClass, primaryButton, secondaryButton, Section, VenueHeader } from "./ui";
 import { TimeList, type Times } from "./TimeList";
 import { Confirmation } from "./Confirmation";
 import { hasZoneChoice, zonesToShow } from "./zones";
