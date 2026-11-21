@@ -4,7 +4,7 @@
 - Date: 2026-11-20
 - Deciders: David Cabeza
 
-Nothing in this record is built. It proposes how a guest saves a booking in the phone's Wallet and how that pass stays current, so that the contract (`docs/contract/openapi.yaml`, plus a new `docs/contract/wallet.md`), the conformance cases and the code can follow, in that order, once it is accepted. It builds on [ADR-0017](0017-booking-widget-and-self-service-link.md) (the `/r` page and its token), [ADR-0022](0022-hosted-demo-sandbox.md) (the demo) and [ADR-0024](0024-guest-email-language.md) (the guest's language). Open questions for the owner are marked `Q1` to `Q8`.
+Nothing in this record is built. It proposes how a guest saves a booking in the phone's Wallet and how that pass stays current, so that the contract (`docs/contract/openapi.yaml`, plus a new `docs/contract/wallet.md`), the conformance cases and the code can follow, in that order, once it is accepted. It builds on [ADR-0017](0017-booking-widget-and-self-service-link.md) (the `/r` page and its token) and [ADR-0024](0024-guest-email-language.md) (the guest's language). Open questions for the owner are marked `Q1` to `Q8`.
 
 ## Decisions at a glance
 
@@ -28,7 +28,7 @@ What the code and the docs say today, read on `origin/main` at `cb232dd`:
 - A guest booking through the widget gets a self-service link, a token `<linkId>.<secret>` in the URL fragment of `/r`. The database stores only the SHA-256 of the secret (`self_service_links` in `apps/api/src/db/schema.ts`). The link lasts until 48 hours after the booking ends (`LINK_LIFE_MS` in `apps/api/src/lib/self-service.ts`). `GET /public/self-service` takes it in `X-Self-Service-Token`, and every failure is the same `404` `self_service_link_invalid` (`docs/contract/openapi.yaml`, line 2249).
 - A modify cannot change the date or the time (ADR-0017, Context). The statuses are closed: `booked`, `seated`, `attended`, `no_show`, `cancelled`.
 - `reservations.version` is a per-reservation integer, and every write appends an event (`apps/api/src/db/schema.ts`, `events`). `events.id` is a global bigserial. Since [ADR-0026](0026-event-commit-order.md) a venue's events commit in id order, through the lock in `appendEvents` (`apps/api/src/lib/events.ts`). Events carry no guest data, only `type`, `reservationId`, `version`, and the channel and actor (ADR-0023).
-- Webhooks are a cursor over that feed, delivered by a worker with a lease, batches, a timeout and backoff (`apps/api/src/lib/webhooks.ts`: `BATCH_SIZE` 50, `TIMEOUT_MS` 5 s, backoff 30 s to 1 h). Webhooks are blocked in a demo sandbox (`sandboxWebhooksBlocked`, `apps/api/src/demo/limits.ts`).
+- Webhooks are a cursor over that feed, delivered by a worker with a lease, batches, a timeout and backoff (`apps/api/src/lib/webhooks.ts`: `BATCH_SIZE` 50, `TIMEOUT_MS` 5 s, backoff 30 s to 1 h). The hosted demo and its special webhook restrictions have been retired.
 - Emails to the guest carry only what the engine wrote and never the guest's name or note (`apps/api/src/lib/mailer.ts`, the comment above `buildEmail`). The same rule is kept here.
 - Erasure blanks name, contact, guest link, consent, rating, note and reconfirmation, deletes the self-service link, writes a tombstone hash and returns `erased` events (`eraseReservations` in `apps/api/src/lib/venue.ts`).
 - A venue's public name, phone and address are already published for JSON-LD (`apps/api/src/lib/public-profile.ts`, `venues.public_phone`).
@@ -272,7 +272,7 @@ Real devices are needed for stages 3 to 5 and cannot be tested in CI; the stage 
 
 **Accepted.** A pass cannot link to the booking's management page. A guest who erases nothing keeps a copy of the booking on the phone, which is theirs. Without per-venue credentials, a venue's passes come from the operator's Apple team and Google issuer. On a hosted instance that means ours. Google's `addMessage` is at most once, so a notification can be missed. Wallet never offers a marketing channel on Apple.
 
-**Changes to existing rules.** ADR-0017 section 4 lists what the guest view shows and what erasure removes; erasure now also voids passes and deletes registrations, and its counts gain two. C5 and C18 list what erasure and retention do and gain the same. ADR-0022's template needs no change. No existing rule is weakened.
+**Changes to existing rules.** ADR-0017 section 4 lists what the guest view shows and what erasure removes; erasure now also voids passes and deletes registrations, and its counts gain two. C5 and C18 list what erasure and retention do and gain the same. No existing rule is weakened.
 
 ## Open questions for the owner
 
@@ -287,7 +287,7 @@ Real devices are needed for stages 3 to 5 and cannot be tested in CI; the stage 
 
 ## Evidence and limits
 
-Verified in code at `cb232dd`: `apps/api/src/lib/mailer.ts`, `apps/api/src/lib/venue.ts` (`eraseReservations`), `apps/api/src/lib/events.ts`, `apps/api/src/lib/webhooks.ts`, `apps/api/src/lib/self-service.ts`, `apps/api/src/db/schema.ts`, `apps/api/src/demo/limits.ts`, `docs/contract/openapi.yaml` (`/public/self-service`), `docs/requirements.md` (REQ-N2, REQ-N4), `.env.example`.
+Verified in code at `cb232dd`: `apps/api/src/lib/mailer.ts`, `apps/api/src/lib/venue.ts` (`eraseReservations`), `apps/api/src/lib/events.ts`, `apps/api/src/lib/webhooks.ts`, `apps/api/src/lib/self-service.ts`, `apps/api/src/db/schema.ts`, ``docs/contract/openapi.yaml` (`/public/self-service`), `docs/requirements.md` (REQ-N2, REQ-N4), `.env.example`.
 
 Verified in documentation on 2026-11-20 (fetched, not recalled): the Apple pages named in section 2 and 3 (the JSON behind `developer.apple.com/documentation/walletpasses`), the Apple Wallet badge guidelines, and the Google Wallet pages for push notifications, the Save link, the brand guidelines, onboarding and publishing access. Package facts from the npm registry.
 

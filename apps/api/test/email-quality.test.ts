@@ -2,7 +2,7 @@
 // kind in every shipped locale, with a full venue, a bare one, no venue and a hostile one, and checks the facts, the
 // markup rules, the colors, the size and the calendar file. A new locale or a new kind lands in these loops on its own.
 import { describe, expect, it } from "vitest";
-import { accentFor, BODY_PX, DARK, DEFAULT_ACCENT, LIGHT } from "../src/lib/email-layout";
+import { accentFor, BODY_PX, DARK, DEFAULT_ACCENT, LIGHT, SITE_URL } from "../src/lib/email-layout";
 import { EMAIL_CATALOGS, formatEmailDay, message, partyLabel } from "../src/lib/email-messages";
 import { emailVenue, type EmailVenue } from "../src/lib/email-venue";
 import { buildEmail, buildLinkEmail, buildWaitlistJoinEmail, GUEST_MANAGE_LINK_ENABLED, MAX_SUBJECT_LENGTH, type BuiltEmail } from "../src/lib/mailer";
@@ -259,7 +259,7 @@ describe("email quality bar", () => {
         expect(mail.text).toContain(venue.name);
       }
       for (const href of new Set(hrefs(mail.html))) {
-        if (href.startsWith("tel:") || href === "https://opencovers.dev") continue;
+        if (href.startsWith("tel:") || href === SITE_URL) continue;
         // A map link on the address row shows as the address in text. Only the "how to get there" button prints its URL.
         const printed = href.includes("google.com/maps") ? mail.html.includes(`>${message(c.locale, "map.open")}</a>`) : true;
         if (printed) expect(mail.text, href).toContain(href);
