@@ -1,4 +1,5 @@
 import { ClipboardListIcon, MessageSquareTextIcon, PrinterIcon, StarIcon } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
@@ -9,7 +10,7 @@ import { useAgenda } from "@/hooks/use-agenda";
 import { usePacing } from "@/hooks/use-pacing";
 import { useTables } from "@/hooks/use-tables";
 import { useT, type MessageKey } from "@/i18n";
-import type { FloorTable, Reconfirmation } from "@/lib/api";
+import { api, type FloorTable, type Reconfirmation } from "@/lib/api";
 import { longDate } from "@/lib/date";
 import { buildPreShift, LARGE_PARTY_MIN, rowsForFloorTime, totalCovers, type PreShiftRow } from "@/lib/pre-shift";
 import { useTimeDisplay } from "@/lib/time-format";
@@ -39,8 +40,34 @@ export function PreShiftView({
   const pacing = usePacing(venueId, date);
   const tables = useTables(venueId);
 
+  // The agenda contains only bookings whose arrival date matches the selected
+  // date. A reservation arriving before midnight can still hold a table after
+  // midnight, so fetch any floor reservation missing from today's agenda.
+  const agendaReservations = agenda.data?.reservations ?? [];
+  const agendaIds = new Set(agendaReservations.map((r) => r.id));
+  const missingIds = [...new Set(
+    floorTables
+      .filter((table) => table.occupied && table.reservationId)
+      .map((table) => table.reservationId as string),
+  )].filter((id) => !agendaIds.has(id));
+  const missingQueries = useQueries({
+    queries: missingIds.map((id) => ({
+      queryKey: ["reservation", venueId, id],
+      queryFn: () => api.getReservation(venueId, id),
+      enabled: Boolean(agenda.data),
+      retry: false,
+      staleTime: 15_000,
+    })),
+  });
+  const missingPending = Boolean(agenda.data) && missingQueries.some((query) => query.isPending);
+  const missingError = missingQueries.find((query) => query.isError);
+  const additionalReservations = missingQueries.flatMap((query) => query.data ? [query.data] : []);
   const rows = rowsForFloorTime(
-    buildPreShift(agenda.data?.reservations ?? [], tables.data?.tables ?? [], null),
+    buildPreShift(
+      [...agendaReservations, ...additionalReservations],
+      tables.data?.tables ?? floorTables,
+      null,
+    ),
     time,
     floorTables,
     pacing.data?.pacing ?? [],
@@ -50,7 +77,11 @@ export function PreShiftView({
   const reservedIds = new Set(floorTables.filter((table) => table.occupied).map((table) => table.reservationId));
 
   return (
-    <section aria-labelledby="floor-reservation-details-title" className="space-y-4 border-t pt-6 print:border-0 print:pt-0">
+    <section
+      aria-labelledby="floor-reservation-details-title"
+      data-print-target="reservation-details"
+      className="space-y-4 border-t pt-6 print:border-0 print:pt-0"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="floor-reservation-details-title" className="font-display text-2xl">{t("preshift.title")}</h2>
@@ -61,13 +92,18 @@ export function PreShiftView({
             {longDate(date)} · {displayTime(time)}
           </p>
         </div>
-        <Button variant="outline" className="print:hidden" onClick={() => window.print()}>
+        <Button
+          variant="outline"
+          className="print:hidden"
+          disabled={agenda.isPending || missingPending || Boolean(missingError)}
+          onClick={() => window.print()}
+        >
           <PrinterIcon />
           {t("preshift.print")}
         </Button>
       </div>
 
-      {agenda.isPending ? (
+      {agenda.isPending || missingPending ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[0, 1, 2, 3].map((n) => (
@@ -83,6 +119,17 @@ export function PreShiftView({
           retrying={agenda.isRefetching}
           onRetry={() => void agenda.refetch()}
         />
+      ) : missingError && rows.length === 0 ? (
+        <LoadError
+          what={t("preshift.loadWhat")}
+          error={missingError.error}
+          retrying={missingQueries.some((query) => query.isFetching)}
+          onRetry={() => {
+            for (const query of missingQueries) {
+              if (query.isError) void query.refetch();
+            }
+          }}
+        />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={ClipboardListIcon}
@@ -91,6 +138,19 @@ export function PreShiftView({
         />
       ) : (
         <>
+          {missingError && (
+            <LoadError
+              what={t("preshift.loadWhat")}
+              error={missingError.error}
+              compact
+              retrying={missingQueries.some((query) => query.isFetching)}
+              onRetry={() => {
+                for (const query of missingQueries) {
+                  if (query.isError) void query.refetch();
+                }
+              }}
+            />
+          )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border bg-card px-4 py-3 sm:grid-cols-4 print:hidden">
             <SummaryMetric label={t("preshift.stat.reservations")} value={rows.length} />
             <SummaryMetric label={t("preshift.stat.covers")} value={totalCovers(rows)} />
@@ -109,7 +169,12 @@ export function PreShiftView({
 
           <ul className="divide-y overflow-hidden rounded-xl border bg-card print:rounded-none print:border-x-0">
             {rows.map((row) => (
-              <PreShiftRowView key={row.reservation.id} row={row} reservedAtTime={reservedIds.has(row.reservation.id)} />
+              <PreShiftRowView
+                key={row.reservation.id}
+                row={row}
+                selectedDate={date}
+                reservedAtTime={reservedIds.has(row.reservation.id)}
+              />
             ))}
           </ul>
         </>
@@ -127,7 +192,7 @@ function SummaryMetric({ label, value, warn = false }: { label: string; value: n
   );
 }
 
-function PreShiftRowView({ row, reservedAtTime }: { row: PreShiftRow; reservedAtTime: boolean }) {
+function PreShiftRowView({ row, selectedDate, reservedAtTime }: { row: PreShiftRow; selectedDate: string; reservedAtTime: boolean }) {
   const t = useT();
   const { reservation, tableNames, large, commentary } = row;
   const displayTime = useTimeDisplay();
@@ -139,7 +204,12 @@ function PreShiftRowView({ row, reservedAtTime }: { row: PreShiftRow; reservedAt
         large && "border-l-warning",
       )}
     >
-      <div className="font-display text-xl tabular-nums">{displayTime(reservation.time)}</div>
+      <div>
+        <div className="font-display text-xl tabular-nums">{displayTime(reservation.time)}</div>
+        {reservation.date !== selectedDate && (
+          <p className="text-xs text-muted-foreground">{longDate(reservation.date)}</p>
+        )}
+      </div>
       <div className="min-w-0">
         <div className="truncate font-medium">{reservation.guest.name || "—"}</div>
         <div className="text-xs text-muted-foreground">

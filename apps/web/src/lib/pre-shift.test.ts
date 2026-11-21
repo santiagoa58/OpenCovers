@@ -110,6 +110,14 @@ describe("buildPreShift", () => {
       .toEqual(["next"]);
   });
 
+  it("sorts an overnight occupied reservation before next-day arrivals", () => {
+    const rows = buildPreShift([
+      reservation({ id: "new-day", date: "2026-11-21", time: "00:15" }),
+      reservation({ id: "overnight", date: "2026-11-20", time: "23:30" }),
+    ], tables, null);
+    expect(rows.map((r) => r.reservation.id)).toEqual(["overnight", "new-day"]);
+  });
+
   it("flags large parties and totals covers", () => {
     const rows = buildPreShift(
       [reservation({ id: "a", partySize: 5 }), reservation({ id: "b", time: "21:00", partySize: 6 })],

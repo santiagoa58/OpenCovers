@@ -30,7 +30,7 @@ export function buildPreShift(
       large: reservation.partySize >= LARGE_PARTY_MIN,
       commentary: commentaryOf(reservation),
     }))
-    .sort((a, b) => a.reservation.time.localeCompare(b.reservation.time));
+    .sort((a, b) => a.reservation.date.localeCompare(b.reservation.date) || a.reservation.time.localeCompare(b.reservation.time));
 }
 
 /**

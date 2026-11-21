@@ -60,7 +60,7 @@ export function FloorView({ venueId }: { venueId: string }) {
 
   return (
     <div className="space-y-8">
-      <div className="print:hidden">
+      <div data-testid="floor-controls" className="print:hidden">
         <PageHeader
           title={t("floor.title")}
           description={t("floor.intro")}
@@ -89,7 +89,7 @@ export function FloorView({ venueId }: { venueId: string }) {
         />
       </div>
 
-      <div className="print:hidden">
+      <div data-testid="floor-pacing" className="print:hidden">
         <PacingView
           venueId={venueId}
           date={date}
@@ -98,7 +98,7 @@ export function FloorView({ venueId }: { venueId: string }) {
         />
       </div>
 
-      <section aria-labelledby="floor-room-title" className="space-y-4 border-t pt-6 print:hidden">
+      <section aria-labelledby="floor-room-title" data-testid="floor-room" className="space-y-4 border-t pt-6 print:hidden">
         <div className="flex flex-wrap items-end justify-between gap-3 px-1">
           <div>
             <h2 id="floor-room-title" className="font-display text-xl">{t("floor.room.title")}</h2>

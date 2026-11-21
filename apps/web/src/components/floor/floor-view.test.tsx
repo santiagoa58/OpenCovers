@@ -62,6 +62,17 @@ describe("FloorView", () => {
     expect(screen.getByText("Reserved").nextElementSibling).toHaveTextContent("1");
   });
 
+  it("marks page controls, pacing and the floor as print-hidden, preserving the briefing", async () => {
+    setup([table()]);
+    const heading = await screen.findByRole("heading", { name: "Reservation details" });
+    const details = heading.closest("section");
+    expect(details).toHaveAttribute("data-print-target", "reservation-details");
+    expect(details).not.toHaveClass("print:hidden");
+    expect(screen.getByTestId("floor-controls")).toHaveClass("print:hidden");
+    expect(screen.getByTestId("floor-pacing")).toHaveClass("print:hidden");
+    expect(screen.getByTestId("floor-room")).toHaveClass("print:hidden");
+  });
+
   it("clicking a busy timeline slot selects that time on the floor", async () => {
     const user = setup([table()]);
     const slot = await screen.findByTestId("floor-slot-16:45");
