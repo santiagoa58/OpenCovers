@@ -89,7 +89,7 @@ export function WaitlistView({ venueId }: { venueId: string }) {
           <div className="grid grid-cols-3 gap-3">
             <Stat label={t("waitlist.stat.parties")} value={entries.length} />
             <Stat label={t("waitlist.stat.guests")} value={entries.reduce((n, e) => n + e.partySize, 0)} />
-            <Stat label={t("waitlist.stat.longestWait")} value={elapsed(entries[0].createdAt)} />
+            <Stat label={t("waitlist.stat.longestWait")} value={entries[0] ? elapsed(entries[0].createdAt) : "—"} />
           </div>
 
           <ol className="divide-y overflow-hidden rounded-xl border bg-card">
