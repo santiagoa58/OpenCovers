@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FloorTable } from "@/lib/api";
 import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
 import { FloorView } from "./floor-view";
@@ -44,6 +44,7 @@ describe("FloorView", () => {
   afterEach(() => {
     window.history.replaceState(null, "", "/");
     resetApiMocks();
+    vi.restoreAllMocks();
   });
 
   it("counts free and occupied tables and the guests seated", async () => {
@@ -78,6 +79,8 @@ describe("FloorView", () => {
 
   it("clicking a busy timeline slot selects that time on the floor", async () => {
     const user = setup([table()]);
+    const push = vi.spyOn(window.history, "pushState");
+    const replace = vi.spyOn(window.history, "replaceState");
     const slot = await screen.findByTestId("floor-slot-16:45");
     await user.click(slot);
     expect(slot).toHaveAttribute("aria-pressed", "true");
@@ -85,6 +88,8 @@ describe("FloorView", () => {
     expect(screen.getByRole("combobox", { name: "Time minute" })).toHaveValue("45");
     expect(window.location.search).toContain("time=16%3A45");
     expect(screen.getByText("Viewing 16:45")).toBeInTheDocument();
+    expect(replace).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("updates reservation details when the selected Pacing time changes", async () => {
@@ -259,6 +264,59 @@ describe("FloorView", () => {
     const timePicker = screen.getByRole("group", { name: "Time" });
     expect(timePicker).toHaveClass("border", "rounded-md");
     expect(screen.getByRole("button", { name: "Now" })).toBeInTheDocument();
+  });
+
+  it("keeps off-slot time selections aligned across the timeline, floor query and reservation details", async () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-21&time=16%3A46");
+    const api = mockApi({
+      [FLOOR]: { body: { tables: [table()] } },
+      [ITEMS]: { body: { items: [] } },
+      "GET /v1/venues/v1/tables": { body: { tables: [] } },
+      "GET /v1/venues/v1/pacing": { body: { pacing: [{ service: "Dinner", slots: [
+        { time: "16:30", capacity: 10, covers: 2 },
+        { time: "16:45", capacity: 10, covers: 2 },
+        { time: "17:00", capacity: 10, covers: 0 },
+      ] }] } },
+      "GET /v1/venues/v1/agenda": { body: { reservations: [
+        { id: "early", date: "2026-11-21", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "Early Guest" } },
+        { id: "late", date: "2026-11-21", status: "booked", time: "16:45", partySize: 2, service: "Dinner", guest: { name: "Later Guest" } },
+      ] } },
+    });
+    renderWithApp(<FloorView venueId="v1" />);
+    const user = userEvent.setup();
+    const slot = await screen.findByTestId("floor-slot-16:45");
+    expect(slot).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Time minute" })).toHaveValue("46");
+    expect(screen.getByTestId("floor-selected-time")).toHaveTextContent("Viewing 16:46");
+    expect(await screen.findByText("Later Guest")).toBeInTheDocument();
+    expect(screen.queryByText("Early Guest")).not.toBeInTheDocument();
+    expect(api.calls("GET", "/v1/venues/v1/floor").some((r) => r.path.includes("time=16:46"))).toBe(true);
+
+    const push = vi.spyOn(window.history, "pushState");
+    const replace = vi.spyOn(window.history, "replaceState");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Time minute" }), "30");
+    expect(await screen.findByText("Early Guest")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Later Guest")).not.toBeInTheDocument());
+    expect(screen.getByTestId("floor-slot-16:30")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("floor-selected-time")).toHaveTextContent("Viewing 16:30");
+    expect(api.calls("GET", "/v1/venues/v1/floor").some((r) => r.path.includes("time=16:30"))).toBe(true);
+    expect(replace).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("uses replaceState to jump to Now while updating the shared date and time", async () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-20&time=16%3A30");
+    setup([table()]);
+    const user = userEvent.setup();
+    const push = vi.spyOn(window.history, "pushState");
+    const replace = vi.spyOn(window.history, "replaceState");
+    await user.click(screen.getByRole("button", { name: "Now" }));
+    expect(replace).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("date")).toBe("2026-11-21");
+    expect(params.get("time")).toMatch(/^([01]\\d|2[0-3]):[0-5]\\d$/);
+    expect(screen.getByTestId("floor-selected-time")).toHaveTextContent("Viewing");
   });
 
 });

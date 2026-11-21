@@ -1,9 +1,12 @@
-import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { setUrlParams, useUrlDate, useUrlParam, useUrlPartySize, useUrlTime } from "./url-state";
 
 describe("URL state", () => {
-  afterEach(() => window.history.replaceState(null, "", "/"));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState(null, "", "/");
+  });
 
   it("hydrates dates, time and party size from the address after reload", () => {
     window.history.replaceState(null, "", "/?view=floor&date=2026-11-20&time=17%3A30&party=4");
@@ -47,4 +50,37 @@ describe("URL state", () => {
     expect(result.current.time).not.toBe("35:55");
     expect(result.current.party).toBe(2);
   });
+  it("replaces time changes without stacking browser history entries", () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-21&time=16%3A30#main");
+    const push = vi.spyOn(window.history, "pushState");
+    const replace = vi.spyOn(window.history, "replaceState");
+    const { result } = renderHook(() => useUrlTime());
+
+    act(() => result.current[1]("16:45"));
+    act(() => result.current[1]("16:46"));
+    act(() => result.current[1]("17:00"));
+    expect(result.current[0]).toBe("17:00");
+    expect(new URLSearchParams(window.location.search).get("date")).toBe("2026-11-21");
+    expect(window.location.hash).toBe("#main");
+    expect(replace).toHaveBeenCalledTimes(3);
+    expect(push).not.toHaveBeenCalled();
+
+    act(() => result.current[1]("not-a-time"));
+    expect(result.current[0]).toBe("17:00");
+    expect(replace).toHaveBeenCalledTimes(3);
+  });
+
+  it("pins a missing time in the URL once rather than recalculating it on re-renders", async () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-21");
+    const push = vi.spyOn(window.history, "pushState");
+    const { result, rerender } = renderHook(() => useUrlTime());
+    const initialTime = result.current[0];
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("time")).toBe(initialTime));
+    rerender();
+    expect(result.current[0]).toBe(initialTime);
+    expect(push).not.toHaveBeenCalled();
+    const reloaded = renderHook(() => useUrlTime());
+    expect(reloaded.result.current[0]).toBe(initialTime);
+  });
+
 });
