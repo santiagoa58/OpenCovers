@@ -98,13 +98,15 @@ a { color: inherit; }
 @media (max-width: 760px) { .win .bar { height: 36px; padding: 0 12px; } .win .bar b { display: none; } }
 
 /* ---------- features: sentences with switches ---------- */
-.sw { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; min-height: 20vh; padding: 28px var(--m); text-align: left; background: var(--bg); color: var(--muted); cursor: pointer; transition: background 0.5s var(--ease), color 0.4s; }
+.sw { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; min-height: 20vh; padding: 28px var(--m); text-align: left; background: var(--bg); color: var(--muted); cursor: pointer; transition: background 0.5s var(--ease), color 0.4s; }
 .sw:nth-child(even) { background: var(--surface); }
 .sw[data-on="true"] { background: var(--on); color: var(--ink); }
 .sw .txt { max-width: 62rem; }
 .sw .s { font-size: var(--head); line-height: 0.98; }
 .sw .c { max-height: 0; opacity: 0; overflow: hidden; margin-top: 0; font-size: var(--body); max-width: 52ch; transition: max-height 0.5s var(--ease), opacity 0.5s, margin 0.5s var(--ease); }
 .sw[data-on="true"] .c { max-height: 9em; opacity: 1; margin-top: 14px; }
+.sw-action { position: absolute; inset: 0; z-index: 1; width: 100%; cursor: pointer; background: transparent; border: 0; }
+.sw-action:focus-visible { outline: 3px solid var(--ink); outline-offset: -4px; }
 .tg { flex: none; padding: 0; cursor: pointer; font-size: var(--head); width: 1.9em; height: 1.1em; border-radius: 999px; background: #c9c9c4; position: relative; transition: background 0.3s; }
 .tg::after { content: ""; position: absolute; top: 0.1em; left: 0.1em; width: 0.9em; height: 0.9em; border-radius: 50%; background: #fff; transition: transform 0.35s var(--ease); }
 .sw[data-on="true"] .tg { background: var(--ink); }
