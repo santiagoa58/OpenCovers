@@ -1,7 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { and, count, eq, gte, isNull, sql } from "drizzle-orm";
 import { idempotencyKeys, waitlist, waitlistLinks } from "../db/schema";
-import { enforceSandboxCap, mailIdentity, mayEmail } from "../demo/limits";
 import { countBlocklistEntries } from "./blocklist";
 import { normalizeContact, venueCountry, type ContactKey } from "./contact";
 import { resolveEmailLocale } from "./email-messages";
@@ -194,7 +193,6 @@ export async function joinWaitlist(db: Db, target: PublicVenue, input: WaitlistJ
         .from(waitlist)
         .where(and(open, eq(waitlist.date, input.date)));
       if (onDate!.held >= WAITLIST_CAPS.perDate) throw new JoinRefused("waitlist_unavailable");
-      await enforceSandboxCap(tx as unknown as Db, venue.id, "waitlist");
 
       const entryId = crypto.randomUUID();
       await tx.insert(waitlist).values({
@@ -346,14 +344,12 @@ export async function sendJoinEmail(
 ): Promise<void> {
   try {
     if (origin === null || !canResend(venue, origin)) return;
-    if (!(await mayEmail(db, venue.id, input.contact))) return;
     const { subject, text, html } = buildWaitlistJoinEmail(
       { date: input.date, window: input.window, partySize: input.partySize, url: leaveUrl(origin, token, input.locale ?? settings.locale) },
       resolveEmailLocale(input.locale, settings.locale),
       emailVenue(venue, settings.theme),
     );
-    const identity = await mailIdentity(db, venue.id, venue);
-    await sendEmail(identity.apiKey, identity.from, input.contact, subject, text, html);
+    await sendEmail(venue.resendApiKey ?? "", venue.fromEmail, input.contact, subject, text, html);
   } catch (err) {
     // The message only: a provider's answer could quote the email, and the email holds the token.
     console.error("notification waitlist_join failed:", err instanceof Error ? err.message.split(":")[0] : "unknown");
