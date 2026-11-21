@@ -34,64 +34,16 @@ import { useVenues } from "@/hooks/use-venues";
 import { api } from "@/lib/api";
 import { errorMessage, isApiError } from "@/lib/error-message";
 import {
-  LOCALES,
-  LOCALE_NAMES,
   defaultThemeForm,
   parseForm,
   toForm,
-  type FormErrors,
   type OnlineBookingForm,
   type ThemeForm,
 } from "@/lib/online-booking";
-import { WEEKDAYS } from "@/lib/weekdays";
 import { OnlineBookingThemeEditor } from "./online-booking-theme-editor";
 import { OnlineBookingEmbed } from "./online-booking-embed";
-
-type NumberKey =
-  | "minPartySize"
-  | "maxPartySize"
-  | "leadTimeMinutes"
-  | "maxAdvanceDays"
-  | "selfServiceCutoffMinutes"
-  | "maxOpenBookingsPerContact";
-
-/** A checkbox drawn as a pill. The real input stays in the page, so labels and the keyboard work as before. */
-function Chip({
-  checked,
-  onChange,
-  disabled,
-  verbatim,
-  children,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-  /** Shows the label as written. A zone name is an exact identifier, so its first letter is not capitalised. */
-  verbatim?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className={disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="peer sr-only"
-      />
-      <span
-        className={cn(
-          "inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-          !verbatim && "first-letter:uppercase",
-          "hover:bg-muted peer-checked:border-primary peer-checked:bg-accent peer-checked:text-accent-foreground",
-          "peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50",
-        )}
-      >
-        {children}
-      </span>
-    </label>
-  );
-}
+import { OnlineBookingAvailabilityFields } from "./online-booking-availability-fields";
+import { OnlineBookingGuestFields } from "./online-booking-guest-fields";
 
 export function OnlineBookingCard({ venueId }: { venueId: string }) {
   const t = useT();
@@ -187,57 +139,13 @@ export function OnlineBookingCard({ venueId }: { venueId: string }) {
     save.mutate(result.update);
   }
 
-  function num(key: NumberKey) {
-    return {
-      value: form?.[key] ?? "",
-      inputMode: "numeric" as const,
-      "aria-invalid": errors[key] ? true : undefined,
-      "aria-describedby": errors[key] ? `ob-${key}-error` : undefined,
-      onChange: (e: { target: { value: string } }) =>
-        form && setForm({ ...form, [key]: e.target.value }),
-    };
-  }
-
   function setTheme(patch: Partial<ThemeForm>) {
     if (form) setForm({ ...form, theme: { ...form.theme, ...patch } });
-  }
-
-  function error(key: keyof FormErrors) {
-    return errors[key] ? (
-      <p id={`ob-${key}-error`} role="alert" className="text-sm text-destructive">
-        {errors[key]}
-      </p>
-    ) : null;
-  }
-
-  function toggleService(name: string, on: boolean) {
-    if (!form) return;
-    const current = form.services ?? serviceNames;
-    const next = on ? [...new Set([...current, name])] : current.filter((n) => n !== name);
-    setForm({ ...form, services: next });
-  }
-
-  function toggleZone(name: string, on: boolean) {
-    if (!form) return;
-    setForm({
-      ...form,
-      publicZones: on ? [...new Set([...form.publicZones, name])] : form.publicZones.filter((z) => z !== name),
-    });
-  }
-
-  function toggleDay(day: number, on: boolean) {
-    if (!form) return;
-    setForm({
-      ...form,
-      weekdays: on ? [...new Set([...form.weekdays, day])] : form.weekdays.filter((d) => d !== day),
-    });
   }
 
   // The zone names the venue's tables carry. A saved name no table has is still listed, so it can be removed.
   const tableZones = [...new Set((tableData?.tables ?? []).map((tb) => tb.zone.trim()).filter((z) => z !== ""))];
   const zonesReady = tableData !== undefined;
-  const zoneOptions = [...tableZones, ...(form?.publicZones ?? []).filter((z) => !tableZones.includes(z))];
-  const zonesLocked = tableZones.length < 2;
 
   const bookable = services.some(
     (s) =>
@@ -302,184 +210,8 @@ export function OnlineBookingCard({ venueId }: { venueId: string }) {
               </div>
             )}
 
-            <Group title={t("onlinebooking.what.title")} description={t("onlinebooking.what.description")}>
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium">{t("onlinebooking.services.legend")}</legend>
-                {serviceNames.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("onlinebooking.services.none")}</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {serviceNames.map((name) => (
-                      <Chip
-                        key={name}
-                        checked={form.services === null || form.services.includes(name)}
-                        onChange={(on) => toggleService(name, on)}
-                      >
-                        {name}
-                      </Chip>
-                    ))}
-                  </div>
-                )}
-                {error("services")}
-              </fieldset>
-
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium">{t("onlinebooking.days.legend")}</legend>
-                <div className="flex flex-wrap gap-2">
-                  {WEEKDAYS.map((d) => (
-                    <Chip
-                      key={d.value}
-                      checked={form.weekdays.includes(d.value)}
-                      onChange={(on) => toggleDay(d.value, on)}
-                    >
-                      {d.short}
-                    </Chip>
-                  ))}
-                </div>
-                {error("weekdays")}
-              </fieldset>
-            </Group>
-
-            <Group title={t("onlinebooking.party.title")} description={t("onlinebooking.party.description")}>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ob-min">{t("onlinebooking.minParty")}</Label>
-                  <Input id="ob-min" {...num("minPartySize")} />
-                  {error("minPartySize")}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ob-max">{t("onlinebooking.maxParty")}</Label>
-                  <Input id="ob-max" {...num("maxPartySize")} />
-                  {error("maxPartySize")}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ob-lead">{t("onlinebooking.lead")}</Label>
-                  <Input id="ob-lead" {...num("leadTimeMinutes")} />
-                  {error("leadTimeMinutes")}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ob-advance">{t("onlinebooking.horizon")}</Label>
-                  <Input id="ob-advance" placeholder={t("onlinebooking.horizon.placeholder")} {...num("maxAdvanceDays")} />
-                  {error("maxAdvanceDays")}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ob-cutoff">{t("onlinebooking.cutoff")}</Label>
-                  <Input id="ob-cutoff" {...num("selfServiceCutoffMinutes")} />
-                  {error("selfServiceCutoffMinutes")}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ob-open">{t("onlinebooking.open")}</Label>
-                  <Input id="ob-open" placeholder={t("onlinebooking.open.placeholder")} {...num("maxOpenBookingsPerContact")} />
-                  {error("maxOpenBookingsPerContact")}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ob-locale">{t("common.language")}</Label>
-                  <select
-                    id="ob-locale"
-                    value={form.locale}
-                    onChange={(e) => setForm({ ...form, locale: e.target.value })}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                  >
-                    {LOCALES.map((l) => (
-                      <option key={l} value={l}>
-                        {LOCALE_NAMES[l]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </Group>
-
-            <Group title={t("onlinebooking.guest.title")} description={t("onlinebooking.guest.description")}>
-              <fieldset className="space-y-2" disabled={zonesReady && zonesLocked && form.publicZones.length === 0}>
-                <legend className="text-sm font-medium">{t("onlinebooking.zones.legend")}</legend>
-                {zonesReady && zonesLocked && form.publicZones.length === 0 ? (
-                  <p id="ob-zones-help" className="text-sm text-muted-foreground">
-                    {t("onlinebooking.zones.fewer")}
-                  </p>
-                ) : (
-                  <>
-                    <div className="flex flex-wrap gap-2" aria-describedby="ob-zones-help">
-                      {zoneOptions.map((name) => {
-                        const unused = zonesReady && !tableZones.includes(name);
-                        return (
-                          <Chip
-                            key={name}
-                            checked={form.publicZones.includes(name)}
-                            disabled={!zonesReady}
-                            verbatim
-                            onChange={(on) => toggleZone(name, on)}
-                          >
-                            {name}
-                            {unused && (
-                              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                                ({t("onlinebooking.zones.unused")})
-                              </span>
-                            )}
-                          </Chip>
-                        );
-                      })}
-                    </div>
-                    <p id="ob-zones-help" className="text-sm text-muted-foreground">
-                      {t("onlinebooking.zones.help")}
-                    </p>
-                  </>
-                )}
-                {error("publicZones")}
-              </fieldset>
-
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <Label htmlFor="ob-service-names">{t("onlinebooking.serviceNames.label")}</Label>
-                  <p className="text-sm text-muted-foreground">{t("onlinebooking.serviceNames.help")}</p>
-                </div>
-                <Switch
-                  id="ob-service-names"
-                  checked={form.showServiceNames}
-                  onCheckedChange={(v) => setForm({ ...form, showServiceNames: v })}
-                />
-              </div>
-            </Group>
-
-            <Group title={t("onlinebooking.privacy.title")} description={t("onlinebooking.privacy.description")}>
-              <div className="space-y-2">
-                <Label htmlFor="ob-privacy-url">{t("onlinebooking.privacy.label")}</Label>
-                <Input
-                  id="ob-privacy-url"
-                  inputMode="url"
-                  placeholder="https://example.com/privacy" // i18n-ok
-                  value={form.privacyNoticeUrl}
-                  aria-invalid={errors.privacyNoticeUrl ? true : undefined}
-                  aria-describedby={
-                    errors.privacyNoticeUrl ? "ob-privacy-url-help ob-privacyNoticeUrl-error" : "ob-privacy-url-help"
-                  }
-                  onChange={(e) => setForm({ ...form, privacyNoticeUrl: e.target.value })}
-                />
-                {error("privacyNoticeUrl")}
-                <p id="ob-privacy-url-help" className="text-sm text-muted-foreground">
-                  {t("onlinebooking.privacy.help")}
-                </p>
-              </div>
-            </Group>
-
-            <Group title={t("onlinebooking.embedding.title")} description={t("onlinebooking.embedding.description")}>
-              <div className="space-y-2">
-                <Label htmlFor="ob-origins">{t("onlinebooking.origins.label")}</Label>
-                <Textarea
-                  id="ob-origins"
-                  rows={3}
-                  placeholder="https://example.com" // i18n-ok
-                  value={form.allowedOrigins}
-                  aria-invalid={errors.allowedOrigins ? true : undefined}
-                  aria-describedby={errors.allowedOrigins ? "ob-allowedOrigins-error" : undefined}
-                  onChange={(e) => setForm({ ...form, allowedOrigins: e.target.value })}
-                />
-                {error("allowedOrigins")}
-                <p className="text-sm text-muted-foreground">
-                  {t("onlinebooking.origins.help")}
-                </p>
-              </div>
-            </Group>
+            <OnlineBookingAvailabilityFields form={form} errors={errors} serviceNames={serviceNames} onChange={setForm} />
+            <OnlineBookingGuestFields form={form} errors={errors} tableZones={tableZones} zonesReady={zonesReady} onChange={setForm} />
 
             <OnlineBookingThemeEditor
               theme={form.theme}
