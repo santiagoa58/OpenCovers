@@ -7,7 +7,7 @@ import { createWebhook, deleteWebhook, listWebhooks, webhookPolicyFromEnv } from
 import { toCountryCode } from "../lib/contact";
 import { parseTurnTimes } from "../lib/turn-times";
 import { isMaxActivePerGuest, isMaxAdvanceDays, parseBlockedDates } from "../lib/booking-policy";
-import type { AppEnv } from "../app";
+import type { AppEnv } from "./types";
 import { sendError } from "./send-error";
 
 function isCeiling(value: unknown): value is number {
