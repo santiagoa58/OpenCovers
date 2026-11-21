@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { StaffNoteField } from "@/components/reservation/staff-note-field";
 import { useTables } from "@/hooks/use-tables";
 import { useVenueConfig } from "@/hooks/use-venue-config";
 import { bookingMinutes } from "@/lib/planning-conflicts";
@@ -155,8 +156,8 @@ export function NewReservationDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="party-size">{t("reservation.partySize")}</Label>
+          <Field>
+            <FieldLabel htmlFor="party-size">{t("reservation.partySize")}</FieldLabel>
             <Input
               id="party-size"
               type="number"
@@ -167,10 +168,8 @@ export function NewReservationDialog({
                 min: { value: 1, message: t("reservation.atLeastOne") },
               })}
             />
-            {errors.partySize && (
-              <p className="text-sm text-destructive">{errors.partySize.message}</p>
-            )}
-          </div>
+            <FieldError>{errors.partySize?.message}</FieldError>
+          </Field>
 
           <div className="space-y-2">
             <Label>{t("reservation.tables")}</Label>
@@ -258,18 +257,11 @@ export function NewReservationDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reservation-commentary">{t("reservation.note")}</Label>
-            <Textarea
-              id="reservation-commentary"
-              maxLength={COMMENTARY_MAX}
-              placeholder={t("reservation.notePlaceholder")}
-              {...register("commentary")}
-            />
-            <p className="text-sm text-muted-foreground">
-              {t("reservation.noteHint", { max: COMMENTARY_MAX })}
-            </p>
-          </div>
+          <StaffNoteField
+            id="reservation-commentary"
+            maxLength={COMMENTARY_MAX}
+            {...register("commentary")}
+          />
 
           {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
 
