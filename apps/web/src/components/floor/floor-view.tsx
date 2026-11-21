@@ -59,7 +59,7 @@ export function FloorView({ venueId }: { venueId: string }) {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 print:space-y-0">
       <div data-testid="floor-controls" className="print:hidden">
         <PageHeader
           title={t("floor.title")}
