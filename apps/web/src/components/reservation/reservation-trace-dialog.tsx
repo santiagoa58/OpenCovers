@@ -13,6 +13,7 @@ import { useT } from "@/i18n";
 import { errorMessage } from "@/lib/error-message";
 import { actorLabel, channelLabel, eventLabel, traceTime } from "@/lib/reservation-trace";
 import type { Reservation } from "@/lib/api";
+import { useUiStore } from "@/stores/ui-store";
 
 export function ReservationTraceDialog({
   venueId,
@@ -24,6 +25,7 @@ export function ReservationTraceDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useT();
+  const timeFormat = useUiStore((s) => s.timeFormat);
   const { data, isPending, isError, error, refetch } = useReservationTrace(
     venueId,
     reservation?.id ?? null,
@@ -75,7 +77,7 @@ export function ReservationTraceDialog({
                         dateTime={entry.occurredAt}
                         className="text-xs tabular-nums text-muted-foreground"
                       >
-                        {traceTime(entry.occurredAt)}
+                        {traceTime(entry.occurredAt, timeFormat)}
                       </time>
                     </div>
                     <p className="break-words text-sm font-medium">
