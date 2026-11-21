@@ -1252,7 +1252,7 @@ app.get("/v1/venues/:venueId/tables/availability", async (c) => {
   const date = c.req.query("date") ?? "";
   const time = c.req.query("time") ?? "";
   const size = c.req.query("partySize") ?? "";
-  if (!isDate(date) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time) || !/^[1-9]\\d*$/.test(size)) {
+  if (!isDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !/^[1-9]\d*$/.test(size)) {
     return error(c, "invalid_request");
   }
   const tables = await getTableAvailability(db, venueId, date, time, Number(size));
