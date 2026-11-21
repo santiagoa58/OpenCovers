@@ -29,7 +29,7 @@ describe("parseReservationCommentary", () => {
 
   it("keeps imported details when a new staff note is entered", () => {
     const stored = formatReservationCommentary("Original sheet reference: #302", "Requested a quiet table");
-    expect(stored).toBe("Original sheet reference: #302\\nStaff note: Requested a quiet table");
+    expect(stored).toBe("Original sheet reference: #302\nStaff note: Requested a quiet table");
     expect(parseReservationCommentary(stored)).toEqual({
       reference: "#302", members: null, note: "Requested a quiet table",
     });
