@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
-import { type Created, type Failure, type PublicApi, type PublicConfig, type PublicDay, type PublicSlot } from "./api";
+import type { Created, PublicApi, PublicConfig, PublicDay } from "./api";
 import { DayStrip } from "./DayStrip";
 import { addDays, formatDate, isoWeekday, todayLocal } from "./dates";
 import { explain, type Explanation } from "./errors";
@@ -12,7 +12,7 @@ import { noticeHref, watchTheme } from "./theme";
 import { Field, chipClass, inputClass, primaryButton, secondaryButton, Section, VenueHeader } from "./ui";
 import { TimeList, type Times } from "./TimeList";
 import { Confirmation } from "./Confirmation";
-import { hasZoneChoice, zonesToShow } from "./zones";
+import { hasZoneChoice } from "./zones";
 import { checkDetails, withoutError, type DetailErrors } from "./validate";
 
 type Phase =
