@@ -65,7 +65,7 @@ export function EditReservationDialog({
   const t = useT();
   const queryClient = useQueryClient();
   const bookingDetails = formatReservationCommentary(reservation?.commentary, "");
-  const staffNoteMax = Math.max(0, COMMENTARY_MAX - (bookingDetails ? bookingDetails.length + "\\nStaff note: ".length : 0));
+  const staffNoteMax = Math.max(0, COMMENTARY_MAX - (bookingDetails ? bookingDetails.length + "\nStaff note: ".length : 0));
   const {
     handleSubmit,
     reset,
