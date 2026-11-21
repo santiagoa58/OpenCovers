@@ -32,6 +32,7 @@ export function App({ api, t, locale }: { api: PublicApi; t: Translate; locale: 
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies(attempt): The retry counter deliberately restarts the config request without changing API parameters.
   useEffect(() => {
     let live = true;
     void api.config().then((result) => {
@@ -159,6 +160,7 @@ function BookingForm(props: {
 
   // The strip and the first date. A guest who already picked a date keeps it, and so does a changed party while
   // that date can still be picked.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Strip initialization intentionally runs on party/page changes only; adding starting would refetch after initialization.
   useEffect(() => {
     if (party === "more" || stripFailed.current) {
       if (starting) {
@@ -196,6 +198,7 @@ function BookingForm(props: {
 
   // Runs again on every return to the times step, so slots that went stale while the guest filled in the
   // details (taken, or inside the lead time by now) are never listed again.
+  // biome-ignore lint/correctness/useExhaustiveDependencies(reload): Refresh counter explicitly triggers a new availability request after rejected bookings.
   useEffect(() => {
     if (step !== "choose") return;
     if (!date && starting) return setTimes({ kind: "loading" });
