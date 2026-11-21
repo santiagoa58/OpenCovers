@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { floorItems } from "../db/schema";
 import * as schema from "../db/schema";
-import { enforceSandboxCap } from "../demo/limits";
 
 export type Db = NodePgDatabase<typeof schema>;
 
@@ -60,7 +59,6 @@ export async function addFloorItem(
     rotation: 0,
   };
   await db.transaction(async (tx) => {
-    await enforceSandboxCap(tx as unknown as Db, venueId, "floorItems");
     await tx.insert(floorItems).values({
     id: item.id,
     venueId,
