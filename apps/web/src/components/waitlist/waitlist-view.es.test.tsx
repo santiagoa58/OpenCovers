@@ -36,7 +36,7 @@ describe("WaitlistView in Spanish", () => {
     expect(screen.getByText("Comensales").nextElementSibling).toHaveTextContent("2");
     expect(screen.getByText("Espera más larga").nextElementSibling).toHaveTextContent("20 min");
     expect(screen.getByText("Grupo de 2")).toBeInTheDocument();
-    expect(screen.getByLabelText("Posición 1")).toBeInTheDocument();
+    expect(screen.getByText("Posición 1")).toBeInTheDocument();
 
     expect(screen.queryByRole("heading", { name: "Waitlist" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Seat" })).not.toBeInTheDocument();
