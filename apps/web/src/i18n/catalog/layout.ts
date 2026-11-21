@@ -3,7 +3,6 @@ import { defineMessages } from "../define";
 export default defineMessages({
   en: {
     "layout.nav.agenda": "Agenda",
-    "layout.nav.preshift": "Pre-shift",
     "layout.nav.floor": "Floor plan",
     "layout.nav.availability": "Availability",
     "layout.nav.waitlist": "Waitlist",
@@ -31,7 +30,6 @@ export default defineMessages({
   },
   es: {
     "layout.nav.agenda": "Agenda",
-    "layout.nav.preshift": "Previo al servicio",
     "layout.nav.floor": "Plano de sala",
     "layout.nav.availability": "Disponibilidad",
     "layout.nav.waitlist": "Lista de espera",

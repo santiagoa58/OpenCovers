@@ -8,7 +8,7 @@ describe("PacingView in Spanish", () => {
   beforeEach(() => useUiStore.setState({ locale: "es" }));
   afterEach(() => vi.unstubAllGlobals());
 
-  it("shows the title, the peak, the legend and the date in Spanish", async () => {
+  it("shows the title, the peak, the legend and the selected slot in Spanish", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -26,7 +26,7 @@ describe("PacingView in Spanish", () => {
 
     expect(await screen.findByText("Máximo 4/10 a las 20:00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ritmo" })).toBeInTheDocument();
-    expect(screen.getByText("Viendo 20:00")).toBeInTheDocument();
+    expect(screen.getByTestId("floor-slot-20:00")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("menos del 50%")).toBeInTheDocument();
     expect(screen.getByTitle("20:00 — 4/10 cubiertos")).toBeInTheDocument();
 

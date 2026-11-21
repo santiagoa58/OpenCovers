@@ -27,6 +27,8 @@ function setup(tables: FloorTable[]) {
   mockApi({
     [FLOOR]: { body: { tables } },
     [ITEMS]: { body: { items: [] } },
+    "GET /v1/venues/v1/agenda": { body: { reservations: [] } },
+    "GET /v1/venues/v1/tables": { body: { tables: [] } },
     "GET /v1/venues/v1/pacing": { body: { pacing: [
       { service: "Dinner", slots: [
         { time: "16:30", capacity: 10, covers: 2 },
@@ -55,9 +57,20 @@ describe("FloorView", () => {
         partySize: 4,
       }),
     ]);
-    expect(await screen.findByText("4 guests at tables")).toBeInTheDocument();
+    expect(await screen.findByText("4 guests with tables reserved")).toBeInTheDocument();
     expect(screen.getByText("Free").nextElementSibling).toHaveTextContent("2");
-    expect(screen.getByText("Occupied").nextElementSibling).toHaveTextContent("1");
+    expect(screen.getByText("Reserved").nextElementSibling).toHaveTextContent("1");
+  });
+
+  it("marks page controls, pacing and the floor as print-hidden, preserving the briefing", async () => {
+    setup([table()]);
+    const heading = await screen.findByRole("heading", { name: "Reservation details" });
+    const details = heading.closest("section");
+    expect(details).toHaveAttribute("data-print-target", "reservation-details");
+    expect(details).not.toHaveClass("print:hidden");
+    expect(screen.getByTestId("floor-controls")).toHaveClass("print:hidden");
+    expect(screen.getByTestId("floor-pacing")).toHaveClass("print:hidden");
+    expect(screen.getByTestId("floor-room")).toHaveClass("print:hidden");
   });
 
   it("clicking a busy timeline slot selects that time on the floor", async () => {
@@ -67,6 +80,50 @@ describe("FloorView", () => {
     expect(slot).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("Time")).toHaveValue("16:45");
     expect(screen.getByText("Viewing 16:45")).toBeInTheDocument();
+  });
+
+  it("updates reservation details when the selected Pacing time changes", async () => {
+    mockApi({
+      [FLOOR]: { body: { tables: [table()] } },
+      [ITEMS]: { body: { items: [] } },
+      "GET /v1/venues/v1/tables": { body: { tables: [] } },
+      "GET /v1/venues/v1/pacing": { body: { pacing: [{ service: "Dinner", slots: [
+        { time: "16:30", capacity: 10, covers: 2 },
+        { time: "16:45", capacity: 10, covers: 2 },
+      ] }] } },
+      "GET /v1/venues/v1/agenda": { body: { reservations: [
+        { id: "r1", date: "2026-11-21", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "First Guest" } },
+        { id: "r2", date: "2026-11-21", status: "booked", time: "16:45", partySize: 2, service: "Dinner", guest: { name: "Later Guest" } },
+      ] } },
+    });
+    renderWithApp(<FloorView venueId="v1" />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByTestId("floor-slot-16:30"));
+    expect(await screen.findByText("First Guest")).toBeInTheDocument();
+    expect(screen.queryByText("Later Guest")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("floor-slot-16:45"));
+    expect(await screen.findByText("Later Guest")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("First Guest")).not.toBeInTheDocument());
+  });
+
+  it("includes bookings occupying tables from an earlier arrival", async () => {
+    mockApi({
+      [FLOOR]: { body: { tables: [table({ occupied: true, reservationId: "r1", guestName: "Guest", partySize: 2 })] } },
+      [ITEMS]: { body: { items: [] } },
+      "GET /v1/venues/v1/tables": { body: { tables: [] } },
+      "GET /v1/venues/v1/pacing": { body: { pacing: [{ service: "Dinner", slots: [
+        { time: "16:30", capacity: 10, covers: 2 },
+        { time: "16:45", capacity: 10, covers: 2 },
+      ] }] } },
+      "GET /v1/venues/v1/agenda": { body: { reservations: [
+        { id: "r1", date: "2026-11-21", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "Guest" }, commentary: "Peanut allergy" },
+      ] } },
+    });
+    renderWithApp(<FloorView venueId="v1" />);
+    await userEvent.click(await screen.findByTestId("floor-slot-16:45"));
+    expect(await screen.findByText("Peanut allergy")).toBeInTheDocument();
   });
 
   it("seats a walk-in at a free table from the keyboard", async () => {
@@ -112,6 +169,8 @@ describe("FloorView", () => {
       const api = mockApi({
         [FLOOR]: { body: { tables: list } },
         [ITEMS]: { body: { items: [] } },
+        "GET /v1/venues/v1/agenda": { body: { reservations: [] } },
+        "GET /v1/venues/v1/tables": { body: { tables: [] } },
         "GET /v1/venues/v1/reservations/r1": { body: RESERVATION },
         "POST /v1/venues/v1/reservations/r1/modify": { body: RESERVATION },
       });

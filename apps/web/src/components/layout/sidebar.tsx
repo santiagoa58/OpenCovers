@@ -3,7 +3,6 @@ import {
   CalendarDaysIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
-  ClipboardListIcon,
   LayoutGridIcon,
   SettingsIcon,
   UserCogIcon,
@@ -22,7 +21,6 @@ export type ViewId =
   | "floor"
   | "availability"
   | "waitlist"
-  | "preshift"
   | "setup"
   | "team";
 
@@ -33,7 +31,6 @@ const NAV: {
   adminOnly?: boolean;
 }[] = [
   { id: "agenda", labelKey: "layout.nav.agenda", icon: CalendarDaysIcon },
-  { id: "preshift", labelKey: "layout.nav.preshift", icon: ClipboardListIcon },
   { id: "floor", labelKey: "layout.nav.floor", icon: LayoutGridIcon },
   { id: "availability", labelKey: "layout.nav.availability", icon: CalendarClockIcon },
   { id: "waitlist", labelKey: "layout.nav.waitlist", icon: UsersIcon },

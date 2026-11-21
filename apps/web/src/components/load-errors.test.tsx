@@ -34,7 +34,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const SCREENS: [string, () => ReactElement, string, string][] = [
   ["the agenda", () => <AgendaView venueId="v1" />, "Could not load the agenda", "No reservations"],
-  ["the pre-shift list", () => <PreShiftView venueId="v1" />, "Could not load the pre-shift list", "Nobody expected"],
+  ["reservation details", () => <PreShiftView venueId="v1" date="2026-11-21" time="17:00" floorTables={[]} />, "Could not load reservation details", "No matching reservations"],
   ["the floor plan", () => <FloorView venueId="v1" />, "Could not load the floor plan", "No tables yet"],
   ["availability", () => <AvailabilityView venueId="v1" />, "Could not load availability", "No services configured"],
   ["the waitlist", () => <WaitlistView venueId="v1" />, "Could not load the waitlist", "No one is waiting"],

@@ -4,7 +4,7 @@ export default defineMessages({
   en: {
     "pacing.title": "Pacing",
     "pacing.subtitle": "Covers booked versus capacity, per time slot.",
-    "pacing.floorHint": "Select a time to see the reserved tables on the floor plan below.",
+    "pacing.floorHint": "Select a time to inspect table reservations and guest details below.",
     "pacing.loadWhat": "pacing",
     "pacing.empty.title": "No services configured",
     "pacing.empty.description": "Add services under Settings to see covers versus capacity.",
@@ -22,7 +22,7 @@ export default defineMessages({
   es: {
     "pacing.title": "Ritmo",
     "pacing.subtitle": "Cubiertos reservados frente a capacidad, por franja horaria.",
-    "pacing.floorHint": "Selecciona una hora para ver las mesas reservadas en el plano inferior.",
+    "pacing.floorHint": "Selecciona una hora para ver las mesas reservadas y los detalles de los clientes.",
     "pacing.loadWhat": "el ritmo",
     "pacing.empty.title": "No hay servicios configurados",
     "pacing.empty.description": "Añade servicios en Ajustes para ver los cubiertos frente a la capacidad.",

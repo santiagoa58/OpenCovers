@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Reservation, Table } from "@/lib/api";
-import { buildPreShift, totalCovers } from "@/lib/pre-shift";
+import type { FloorTable, PacingService, Reservation, Table } from "@/lib/api";
+import { buildPreShift, rowsForFloorTime, totalCovers } from "@/lib/pre-shift";
 
 function reservation(overrides: Partial<Reservation>): Reservation {
   return {
@@ -74,6 +74,48 @@ describe("buildPreShift", () => {
       null,
     );
     expect(rows.map((r) => r.tableNames)).toEqual([["Window 1", "t9"], [], []]);
+  });
+
+  it("shows arrivals in the selected 15-minute slot and occupied reservations from earlier", () => {
+    const rows = buildPreShift([
+      reservation({ id: "earlier", time: "19:00" }),
+      reservation({ id: "at-start", time: "20:00" }),
+      reservation({ id: "in-slot", time: "20:10", tables: [] }),
+      reservation({ id: "next-slot", time: "20:15" }),
+      reservation({ id: "later", time: "21:00" }),
+    ], tables, null);
+    const floorTables: FloorTable[] = [{ ...tables[0], occupied: true, reservationId: "earlier" }];
+
+    expect(rowsForFloorTime(rows, "20:08", floorTables).map((r) => r.reservation.id))
+      .toEqual(["earlier", "at-start", "in-slot"]);
+    expect(rowsForFloorTime(rows, "20:15", []).map((r) => r.reservation.id))
+      .toEqual(["next-slot"]);
+  });
+
+  it("uses actual service slots, even when they start off the quarter-hour", () => {
+    const rows = buildPreShift([
+      reservation({ id: "before", time: "16:30" }),
+      reservation({ id: "first", time: "16:40" }),
+      reservation({ id: "middle", time: "16:55" }),
+      reservation({ id: "next", time: "17:10" }),
+    ], tables, null);
+    const pacing: PacingService[] = [{ service: "dinner", slots: [
+      { time: "16:10", covers: 1, capacity: 10 },
+      { time: "16:40", covers: 2, capacity: 10 },
+      { time: "17:10", covers: 1, capacity: 10 },
+    ] }];
+    expect(rowsForFloorTime(rows, "16:45", [], pacing).map((r) => r.reservation.id))
+      .toEqual(["first", "middle"]);
+    expect(rowsForFloorTime(rows, "17:10", [], pacing).map((r) => r.reservation.id))
+      .toEqual(["next"]);
+  });
+
+  it("sorts an overnight occupied reservation before next-day arrivals", () => {
+    const rows = buildPreShift([
+      reservation({ id: "new-day", date: "2026-11-21", time: "00:15" }),
+      reservation({ id: "overnight", date: "2026-11-20", time: "23:30" }),
+    ], tables, null);
+    expect(rows.map((r) => r.reservation.id)).toEqual(["overnight", "new-day"]);
   });
 
   it("flags large parties and totals covers", () => {
