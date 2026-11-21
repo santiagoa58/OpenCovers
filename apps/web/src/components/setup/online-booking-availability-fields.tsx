@@ -26,6 +26,7 @@ export function OnlineBookingAvailabilityFields({
   onChange: (form: OnlineBookingForm) => void;
 }) {
   const t = useT();
+  const setForm = onChange;
   function error(key: keyof FormErrors) {
     if (!errors[key]) return null;
     return <p id={`ob-${key}-error`} role="alert" className="text-sm text-destructive">{errors[key]}</p>;
