@@ -3,11 +3,11 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
-// TypeScript 7's native compiler does not expose the legacy JavaScript AST API.
-// Vite's React plugin already brings Babel as a direct dependency.
+// Reuse Rolldown's TypeScript/TSX AST parser bundled with Vite 8.
+// Resolve from Vite's own package so pnpm needs no extra direct dependency.
 const require = createRequire(import.meta.url);
-const pluginRequire = createRequire(require.resolve("@vitejs/plugin-react"));
-const { parseSync } = pluginRequire("@babel/core");
+const viteRequire = createRequire(require.resolve("vite"));
+const { parseSync } = await import(viteRequire.resolve("rolldown/utils"));
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const baselineFile = join(root, "scripts/architecture-baseline.json");
@@ -26,15 +26,10 @@ function sourceFiles(directory) {
 
 function inspect(path) {
   const content = readFileSync(path, "utf8");
-  const ast = parseSync(content, {
-    filename: path,
-    babelrc: false,
-    configFile: false,
-    parserOpts: {
-      sourceType: "module",
-      plugins: ["typescript", "jsx"],
-    },
-  });
+  const ast = parseSync(path, content, {
+    lang: path.endsWith(".tsx") ? "tsx" : "ts",
+    sourceType: "module",
+  }).program;
   let nestedTernaries = 0;
   const positions = [];
   const nonAstKeys = new Set(["loc", "start", "end", "extra", "comments", "leadingComments", "trailingComments", "innerComments"]);
@@ -43,7 +38,7 @@ function inspect(path) {
     const depth = node.type === "ConditionalExpression" ? ternaryDepth + 1 : ternaryDepth;
     if (node.type === "ConditionalExpression" && ternaryDepth > 0) {
       nestedTernaries++;
-      positions.push(node.loc?.start.line ?? 0);
+      positions.push(node.loc?.start.line ?? content.slice(0, node.start ?? 0).split("\n").length);
     }
     for (const [key, child] of Object.entries(node)) {
       if (nonAstKeys.has(key)) continue;
