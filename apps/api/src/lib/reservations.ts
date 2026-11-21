@@ -17,8 +17,6 @@ import { normalizeCommentary } from "./commentary";
 import { consentColumns, type Consent } from "./consent";
 import { normalizeContact, venueCountry } from "./contact";
 import { linkGuest } from "./guests";
-import { sandboxGuestsFull, sandboxReservationsFull } from "../demo/limits";
-import { demoMode } from "../demo/settings";
 import { appendEvents } from "./events";
 import { claimKey } from "./idempotency";
 import type { Origin } from "./origin";
@@ -864,13 +862,6 @@ export async function createReservation(
         return { id: existing.reservationId, version: existing.version, selfServiceToken: link && link.token };
       }
       if (refusal || !service) throw new ReservationError(refusal ?? "outside_hours");
-      // A demo sandbox has lower caps (ADR-0022), counted here under a per-venue lock so concurrent bookings cannot
-      // pass the last free place. A replayed key replayed above. Skipped, with no query, unless DEMO_MODE=1: the API
-      // does not start with the flag off over a database that holds sandboxes (demo/guard.ts).
-      const sandbox = demoMode();
-      if (sandbox && (await sandboxReservationsFull(tx as unknown as Db, venueId))) {
-        throw new ReservationError("guest_booking_limit");
-      }
       const cap = request.walkIn ? null : venue.maxActivePerGuestPerDay;
       // linkGuest also row-locks the guest, but only as a side effect. This lock keeps count-then-insert serial on its own.
       if (cap !== null && contactKey) {
@@ -886,9 +877,6 @@ export async function createReservation(
       const guest = contactKey
         ? await linkGuest(tx, venueId, contactKey, input.guestName ?? "", startsAt, input.ownerPrincipal ?? "")
         : null;
-      if (sandbox && guest && (await sandboxGuestsFull(tx as unknown as Db, venueId))) {
-        throw new ReservationError("guest_booking_limit");
-      }
       if (cap !== null && guest) {
         const [{ held }] = await tx
           .select({ held: count() })
