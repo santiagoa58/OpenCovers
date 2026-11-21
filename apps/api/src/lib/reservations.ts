@@ -1,4 +1,4 @@
-import { and, count, eq, gt, gte, inArray, lt, ne, notExists, sql } from "drizzle-orm";
+import { and, count, eq, gt, gte, inArray, lt, lte, ne, notExists, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import {
   events,
@@ -102,6 +102,9 @@ export interface WalkInInput {
 }
 
 export interface ModifyReservationInput {
+  date?: string;
+  time?: string;
+  guestName?: string;
   partySize?: number;
   tableIds?: string[];
   consent?: Consent;
@@ -252,7 +255,7 @@ export interface Explanation {
   nearest: string[];
 }
 
-export type StatusTransition = "seated" | "attended" | "no_show";
+export type StatusTransition = "booked" | "seated" | "attended" | "no_show";
 
 export type WriteErrorCode =
   | "slot_taken"
@@ -297,7 +300,9 @@ export type CancelResult =
 const ACTIVE_STATUSES = ["booked", "seated"];
 const MODIFIABLE_STATUSES = [...ACTIVE_STATUSES, "attended"];
 const ALLOWED_TRANSITIONS: Record<StatusTransition, string[]> = {
-  seated: ["booked"],
+  // Staff may correct an accidental status change. A completed/cancelled booking is not reopened.
+  booked: ["seated", "attended", "no_show"],
+  seated: ["booked", "attended"],
   attended: ["seated"],
   no_show: ["booked"],
 };
@@ -1071,6 +1076,12 @@ export async function modifyReservation(
   key: string,
 ): Promise<WriteResult> {
   const guest = input.selfService;
+  if (input.date !== undefined && !isCalendarDate(input.date)) return { ok: false, code: "invalid_request" };
+  if (input.time !== undefined && !TIME.test(input.time)) return { ok: false, code: "invalid_request" };
+  if (input.partySize !== undefined && (!Number.isInteger(input.partySize) || input.partySize < 1)) return { ok: false, code: "invalid_request" };
+  if (input.guestName !== undefined && (typeof input.guestName !== "string" || input.guestName.trim().length > 200)) return { ok: false, code: "invalid_request" };
+  // Guest self-service links cannot change a person's identity or move their booking.
+  if (guest && (input.date !== undefined || input.time !== undefined || input.guestName !== undefined)) return { ok: false, code: "invalid_request" };
   try {
     const version = await replanOnConflict(guest !== undefined, () => db.transaction(async (tx) => {
       const existing = await claimKey(tx, venueId, key);
@@ -1098,6 +1109,29 @@ export async function modifyReservation(
         throw new ReservationError("invalid_transition");
       }
 
+      const venue = (await tx.select().from(venues).where(eq(venues.id, venueId)).limit(1))[0];
+      const targetDate = input.date ?? current.date;
+      const targetTime = input.time ?? formatTime(current.startsAt, venue.timezone);
+      const scheduleChanged = targetDate !== current.date || targetTime !== formatTime(current.startsAt, venue.timezone);
+      let nextService = current.service;
+      let nextStartsAt = current.startsAt;
+      let nextEndsAt = current.endsAt;
+      if (scheduleChanged) {
+        if (!ACTIVE_STATUSES.includes(current.status)) throw new ReservationError("invalid_transition");
+        const slot: SlotRequest = {
+          date: targetDate, time: targetTime,
+          partySize: input.partySize ?? current.partySize,
+          zone: current.zone, walkIn: false,
+        };
+        nextStartsAt = toTimestamp(targetDate, targetTime, venue.timezone);
+        nextEndsAt = new Date(nextStartsAt.getTime() + (current.endsAt.getTime() - current.startsAt.getTime()));
+        const serviceRows = await tx.select().from(services).where(eq(services.venueId, venueId));
+        const { service, reasons } = timeReasons(venue, serviceRows, slot, nextStartsAt, Date.now());
+        reasons.push(...serviceReasons(service, slot));
+        if (!service || reasons.length) throw new ReservationError(reasons[0]?.code ?? "outside_hours");
+        nextService = service.name;
+      }
+      const nameChanged = input.guestName !== undefined && input.guestName.trim() !== current.guestName;
       const partyChanged =
         input.partySize !== undefined && input.partySize !== current.partySize;
       const tableIds =
@@ -1117,7 +1151,7 @@ export async function modifyReservation(
       }
 
       if (
-        (partyChanged || tablesChanged) &&
+        (partyChanged || tablesChanged || scheduleChanged) &&
         !ACTIVE_STATUSES.includes(current.status)
       ) {
         throw new ReservationError("invalid_transition");
@@ -1128,20 +1162,22 @@ export async function modifyReservation(
         throw new ReservationError("table_required");
       }
 
-      if (tablesChanged || grows) {
-        const held =
+      if (tablesChanged || grows || scheduleChanged) {
+        const assigned =
           tableIds !== undefined
-            ? tableIds.length
-            : (
-                await tx
-                  .select({ tableId: tableAllocations.tableId })
-                  .from(tableAllocations)
-                  .where(eq(tableAllocations.reservationId, id))
-              ).length;
-        const venue = (await tx.select().from(venues).where(eq(venues.id, venueId)).limit(1))[0];
-        if (
-          held === 0 &&
-          !(await hasOverbookRoom(tx, venue, current.startsAt, current.endsAt, input.partySize ?? current.partySize, {
+            ? tableIds
+            : (await tx.select({ tableId: tableAllocations.tableId })
+                .from(tableAllocations).where(eq(tableAllocations.reservationId, id)))
+                .map((a) => a.tableId);
+        if (assigned.length > 0) {
+          const capacities = await tx.select({ seats: tables.seats })
+            .from(tables)
+            .where(and(eq(tables.venueId, venueId), inArray(tables.id, assigned)));
+          if (capacities.reduce((sum, table) => sum + table.seats, 0) < (input.partySize ?? current.partySize)) {
+            throw new ReservationError("party_size_too_large");
+          }
+        } else if (
+          !(await hasOverbookRoom(tx, venue, nextStartsAt, nextEndsAt, input.partySize ?? current.partySize, {
             lock: true,
             exceptId: id,
           }))
@@ -1158,7 +1194,7 @@ export async function modifyReservation(
       const commentaryChanged = commentary !== undefined && commentary !== current.commentary;
       const reconfirmationChanged =
         input.reconfirmation !== undefined && input.reconfirmation !== current.reconfirmation;
-      if ((consentChanged || ratingChanged || commentaryChanged || reconfirmationChanged) && current.erased) {
+      if ((nameChanged || consentChanged || ratingChanged || commentaryChanged || reconfirmationChanged) && current.erased) {
         throw new ReservationError("invalid_request");
       }
       if (reconfirmationChanged && current.status !== "booked") {
@@ -1168,6 +1204,8 @@ export async function modifyReservation(
       if (
         !partyChanged &&
         !tablesChanged &&
+        !scheduleChanged &&
+        !nameChanged &&
         !consentChanged &&
         !ratingChanged &&
         !commentaryChanged &&
@@ -1182,6 +1220,10 @@ export async function modifyReservation(
         .set({
           version: nextVersion,
           ...(partyChanged ? { partySize: input.partySize! } : {}),
+          ...(nameChanged ? { guestName: input.guestName!.trim() } : {}),
+          ...(scheduleChanged ? {
+            date: targetDate, service: nextService, startsAt: nextStartsAt, endsAt: nextEndsAt,
+          } : {}),
           ...(consentChanged ? consentColumns(input.consent!) : {}),
           ...(ratingChanged ? ratingColumns(input.rating!) : {}),
           ...(commentaryChanged ? { commentary } : {}),
@@ -1193,9 +1235,13 @@ export async function modifyReservation(
         for (const tableId of tableIds!) {
           await tx.insert(tableAllocations).values({
             reservationId: id, venueId, tableId,
-            startsAt: current.startsAt, endsAt: current.endsAt,
+            startsAt: nextStartsAt, endsAt: nextEndsAt,
           });
         }
+      } else if (scheduleChanged) {
+        await tx.update(tableAllocations)
+          .set({ startsAt: nextStartsAt, endsAt: nextEndsAt })
+          .where(eq(tableAllocations.reservationId, id));
       }
       await tx.insert(idempotencyKeys).values({ key, venueId, reservationId: id, kind: "modify", version: nextVersion });
       await appendEvents(tx, venueId, [{ type: "modified", reservationId: id, version: nextVersion, origin: input.origin }]);
@@ -1291,7 +1337,7 @@ export async function setStatus(
       if (!allowed || !allowed.includes(current.status)) {
         throw new ReservationError("invalid_transition");
       }
-      if (status === "seated") {
+      if (status === "seated" && current.status === "booked") {
         const held = await tx
           .select({ tableId: tableAllocations.tableId })
           .from(tableAllocations)
@@ -1300,6 +1346,14 @@ export async function setStatus(
         if (held.length === 0) throw new ReservationError("table_required");
       }
       const nextVersion = current.version + 1;
+      // Reopening a no-show or completed seating must reclaim its table atomically.
+      // PostgreSQL's exclusion constraint rejects the restoration if another party now holds it.
+      if (ACTIVE_STATUSES.includes(status) && !ACTIVE_STATUSES.includes(current.status)) {
+        const held = await tx.select({ tableId: tableAllocations.tableId })
+          .from(tableAllocations).where(eq(tableAllocations.reservationId, id)).limit(1);
+        if (held.length === 0) throw new ReservationError("table_required");
+        await tx.update(tableAllocations).set({ active: true }).where(eq(tableAllocations.reservationId, id));
+      }
       await tx.update(reservations).set({ status, version: nextVersion }).where(eq(reservations.id, id));
       if (!ACTIVE_STATUSES.includes(status)) {
         await tx.update(tableAllocations).set({ active: false }).where(eq(tableAllocations.reservationId, id));
@@ -1310,6 +1364,7 @@ export async function setStatus(
     });
     return { ok: true, id, version };
   } catch (error) {
+    if (isExclusionViolation(error)) return { ok: false, code: "slot_taken" };
     if (error instanceof ReservationError) return { ok: false, code: error.code };
     throw error;
   }
@@ -1412,6 +1467,42 @@ export async function pruneEvents(db: Db, venueId: string, cutoff: Date): Promis
     .where(eq(venues.id, venueId));
 }
 
+/** Availability for an entire party's seating interval, not just its arrival instant. */
+export async function getTableAvailability(
+  db: Db,
+  venueId: string,
+  date: string,
+  time: string,
+  partySize: number,
+): Promise<{ id: string; available: boolean; reservedBy?: string; reservedUntil?: string }[]> {
+  const venue = await venueOf(db, venueId);
+  if (!venue) return [];
+  const { startsAt, endsAt } = bookingWindow(venue, { date, time, partySize, zone: "", walkIn: false });
+  const [allTables, overlapping] = await Promise.all([
+    db.select({ id: tables.id }).from(tables).where(eq(tables.venueId, venueId)),
+    db.select({
+      tableId: tableAllocations.tableId,
+      guestName: reservations.guestName,
+      endsAt: tableAllocations.endsAt,
+    })
+      .from(tableAllocations)
+      .innerJoin(reservations, eq(tableAllocations.reservationId, reservations.id))
+      .where(and(
+        eq(tableAllocations.venueId, venueId),
+        eq(tableAllocations.active, true),
+        lt(tableAllocations.startsAt, endsAt),
+        gt(tableAllocations.endsAt, startsAt),
+      )),
+  ]);
+  const occupied = new Map(overlapping.map((a) => [a.tableId, a]));
+  return allTables.map(({ id }) => {
+    const held = occupied.get(id);
+    return held
+      ? { id, available: false, reservedBy: held.guestName || undefined, reservedUntil: formatTime(held.endsAt, venue.timezone) }
+      : { id, available: true };
+  });
+}
+
 export interface FloorTable {
   id: string;
   name: string;
@@ -1458,7 +1549,7 @@ export async function getFloorPlan(
             eq(tableAllocations.venueId, venueId),
             eq(tableAllocations.tableId, t.id),
             eq(tableAllocations.active, true),
-            lt(tableAllocations.startsAt, point),
+            lte(tableAllocations.startsAt, point),
             gt(tableAllocations.endsAt, point),
           ),
         )

@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { longDate, todayIso } from "@/lib/date";
 import { useUiStore } from "@/stores/ui-store";
 import { PacingView } from "./pacing-view";
 
@@ -21,13 +20,13 @@ describe("PacingView in Spanish", () => {
     );
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <PacingView venueId="v1" />
+        <PacingView venueId="v1" date="2026-11-21" time="20:00" onSelectTime={() => {}} />
       </QueryClientProvider>,
     );
 
     expect(await screen.findByText("Máximo 4/10 a las 20:00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ritmo" })).toBeInTheDocument();
-    expect(screen.getByText(longDate(todayIso()))).toBeInTheDocument();
+    expect(screen.getByText("Viendo 20:00")).toBeInTheDocument();
     expect(screen.getByText("menos del 50%")).toBeInTheDocument();
     expect(screen.getByTitle("20:00 — 4/10 cubiertos")).toBeInTheDocument();
 

@@ -27,6 +27,12 @@ function setup(tables: FloorTable[]) {
   mockApi({
     [FLOOR]: { body: { tables } },
     [ITEMS]: { body: { items: [] } },
+    "GET /v1/venues/v1/pacing": { body: { pacing: [
+      { service: "Dinner", slots: [
+        { time: "16:30", capacity: 10, covers: 2 },
+        { time: "16:45", capacity: 10, covers: 6 },
+      ] },
+    ] } },
   });
   renderWithApp(<FloorView venueId="v1" />);
   return userEvent.setup();
@@ -52,6 +58,15 @@ describe("FloorView", () => {
     expect(await screen.findByText("4 guests at tables")).toBeInTheDocument();
     expect(screen.getByText("Free").nextElementSibling).toHaveTextContent("2");
     expect(screen.getByText("Occupied").nextElementSibling).toHaveTextContent("1");
+  });
+
+  it("clicking a busy timeline slot selects that time on the floor", async () => {
+    const user = setup([table()]);
+    const slot = await screen.findByTestId("floor-slot-16:45");
+    await user.click(slot);
+    expect(slot).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Time")).toHaveValue("16:45");
+    expect(screen.getByText("Viewing 16:45")).toBeInTheDocument();
   });
 
   it("seats a walk-in at a free table from the keyboard", async () => {

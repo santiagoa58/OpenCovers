@@ -4,7 +4,6 @@ import {
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   ClipboardListIcon,
-  GaugeIcon,
   LayoutGridIcon,
   SettingsIcon,
   UserCogIcon,
@@ -24,7 +23,6 @@ export type ViewId =
   | "availability"
   | "waitlist"
   | "preshift"
-  | "pacing"
   | "setup"
   | "team";
 
@@ -39,7 +37,6 @@ const NAV: {
   { id: "floor", labelKey: "layout.nav.floor", icon: LayoutGridIcon },
   { id: "availability", labelKey: "layout.nav.availability", icon: CalendarClockIcon },
   { id: "waitlist", labelKey: "layout.nav.waitlist", icon: UsersIcon },
-  { id: "pacing", labelKey: "layout.nav.pacing", icon: GaugeIcon },
   { id: "setup", labelKey: "layout.nav.setup", icon: SettingsIcon },
   { id: "team", labelKey: "layout.nav.team", icon: UserCogIcon, adminOnly: true },
 ];

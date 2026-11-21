@@ -18,6 +18,7 @@ function setup(
 ) {
   const api = mockApi({
     "GET /v1/venues/v1/tables": { body: { tables } },
+    "GET /v1/venues/v1/tables/availability": { body: { tables: tables.map((t) => ({ id: t.id, available: true })) } },
     [CREATE]: { body: { id: "r1" } },
     ...extra,
   });
@@ -46,7 +47,7 @@ describe("NewReservationDialog", () => {
 
   it("sends the party size as a number with date, time, guest, note and tables", async () => {
     const { api, onOpenChange, user } = setup();
-    await user.click(await screen.findByRole("button", { name: "Table 2 · 4" }));
+    await user.click(await screen.findByRole("button", { name: /Table 2 · 4/ }));
     await user.clear(screen.getByLabelText("Party size"));
     await user.type(screen.getByLabelText("Party size"), "3");
     await user.type(screen.getByLabelText("Guest name"), "Jane Doe");
@@ -71,7 +72,7 @@ describe("NewReservationDialog", () => {
 
   it("sends the prefilled party size as a number when the host does not touch it", async () => {
     const { api, user } = setup({}, TABLES, 2);
-    await user.click(await screen.findByRole("button", { name: "Table 1 · 2" }));
+    await user.click(await screen.findByRole("button", { name: /Table 1 · 2/ }));
     await submit(user);
 
     await waitFor(() => expect(api.writes()).toHaveLength(1));
@@ -82,8 +83,8 @@ describe("NewReservationDialog", () => {
 
   it("sums the seats of several selected tables", async () => {
     const { api, user } = setup();
-    await user.click(await screen.findByRole("button", { name: "Table 1 · 2" }));
-    await user.click(screen.getByRole("button", { name: "Table 2 · 4" }));
+    await user.click(await screen.findByRole("button", { name: /Table 1 · 2/ }));
+    await user.click(screen.getByRole("button", { name: /Table 2 · 4/ }));
     expect(screen.getByText("6 seats selected for 2 guests.")).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Party size"));
     await user.type(screen.getByLabelText("Party size"), "6");
@@ -103,9 +104,24 @@ describe("NewReservationDialog", () => {
     expect((screen.getByLabelText("Note") as HTMLTextAreaElement).value).toHaveLength(500);
   });
 
+  it("shows reserved tables and disables them for the whole seating interval", async () => {
+    const { user } = setup({
+      "GET /v1/venues/v1/tables/availability": { body: { tables: [
+        { id: "t1", available: false, reservedBy: "Booked Guest", reservedUntil: "21:00" },
+        { id: "t2", available: true },
+      ] } },
+    });
+    const reserved = await screen.findByRole("button", { name: /Table 1 · 2 · Booked/ });
+    expect(reserved).toBeDisabled();
+    expect(reserved).toHaveAttribute("title", "Booked until 21:00");
+    expect(screen.getByRole("button", { name: /Table 2 · 4 · Free/ })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: /Table 2 · 4/ }));
+    expect(screen.getByText("4 seats selected for 2 guests.")).toBeInTheDocument();
+  });
+
   it("does not require a guest name or contact", async () => {
     const { api, user } = setup();
-    await user.click(await screen.findByRole("button", { name: "Table 1 · 2" }));
+    await user.click(await screen.findByRole("button", { name: /Table 1 · 2/ }));
     await submit(user);
 
     await waitFor(() => expect(api.writes()).toHaveLength(1));
@@ -114,7 +130,7 @@ describe("NewReservationDialog", () => {
 
   it("refuses a party larger than the selected tables and sends nothing", async () => {
     const { api, user } = setup();
-    await user.click(await screen.findByRole("button", { name: "Table 1 · 2" }));
+    await user.click(await screen.findByRole("button", { name: /Table 1 · 2/ }));
     await user.clear(screen.getByLabelText("Party size"));
     await user.type(screen.getByLabelText("Party size"), "5");
     await submit(user);
@@ -127,7 +143,7 @@ describe("NewReservationDialog", () => {
 
   it("asks for a table when none is selected and sends nothing", async () => {
     const { api, user } = setup();
-    await screen.findByRole("button", { name: "Table 1 · 2" });
+    await screen.findByRole("button", { name: /Table 1 · 2/ });
     await submit(user);
 
     expect(await screen.findByText("Select at least one table.")).toBeInTheDocument();
@@ -136,7 +152,7 @@ describe("NewReservationDialog", () => {
 
   it("rejects an empty party size before calling the server", async () => {
     const { api, user } = setup();
-    await user.click(await screen.findByRole("button", { name: "Table 1 · 2" }));
+    await user.click(await screen.findByRole("button", { name: /Table 1 · 2/ }));
     await user.clear(screen.getByLabelText("Party size"));
     await submit(user);
 
@@ -146,7 +162,7 @@ describe("NewReservationDialog", () => {
 
   it("rejects a party of zero before calling the server", async () => {
     const { api, user } = setup();
-    await user.click(await screen.findByRole("button", { name: "Table 1 · 2" }));
+    await user.click(await screen.findByRole("button", { name: /Table 1 · 2/ }));
     await user.clear(screen.getByLabelText("Party size"));
     await user.type(screen.getByLabelText("Party size"), "0");
     await submit(user);
@@ -171,7 +187,7 @@ describe("NewReservationDialog", () => {
     "shows the %s error and keeps the dialog open",
     async (code, text) => {
       const { onOpenChange, user } = setup({ [CREATE]: { status: 409, body: { code } } });
-      await user.click(await screen.findByRole("button", { name: "Table 1 · 2" }));
+      await user.click(await screen.findByRole("button", { name: /Table 1 · 2/ }));
       await submit(user);
 
       expect(await screen.findByText(text)).toBeInTheDocument();

@@ -50,9 +50,14 @@ function rowActions(status: string): RowAction[] {
       ];
     case "seated":
       return [
+        { kind: "status", labelKey: "agenda.action.undoSeating", status: "booked" },
         { kind: "status", labelKey: "agenda.action.markAttended", status: "attended" },
         { kind: "cancel", labelKey: "common.cancel" },
       ];
+    case "attended":
+      return [{ kind: "status", labelKey: "agenda.action.undoAttended", status: "seated" }];
+    case "no_show":
+      return [{ kind: "status", labelKey: "agenda.action.undoNoShow", status: "booked" }];
     default:
       return [];
   }
@@ -85,6 +90,8 @@ export function AgendaView({ venueId }: { venueId: string }) {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["agenda", venueId] });
     void queryClient.invalidateQueries({ queryKey: ["availability", venueId] });
+    void queryClient.invalidateQueries({ queryKey: ["floor", venueId] });
+    void queryClient.invalidateQueries({ queryKey: ["preshift", venueId] });
   };
 
   const cancel = useMutation({
@@ -259,6 +266,11 @@ function ReservationRow({
           <div className="truncate font-medium">{reservation.guest.name || "—"}</div>
           {reservation.guest.contact && (
             <div className="truncate text-xs text-muted-foreground">{reservation.guest.contact}</div>
+          )}
+          {reservation.commentary?.startsWith("Guests: ") && (
+            <div className="line-clamp-2 text-xs leading-snug text-muted-foreground" title={reservation.commentary}>
+              {reservation.commentary.slice("Guests: ".length)}
+            </div>
           )}
         </div>
       </div>

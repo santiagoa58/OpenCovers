@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -26,6 +27,10 @@ import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX, type Consent, type Reservation } from "@/lib/api";
 
 interface EditValues {
+  name: string;
+  date: string;
+  time: string;
+  partySize: number;
   consent: Consent;
   rating: string;
   commentary: string;
@@ -35,6 +40,10 @@ const NO_RATING = "none";
 
 function toValues(reservation: Reservation | null): EditValues {
   return {
+    name: reservation?.guest.name ?? "",
+    date: reservation?.date ?? "",
+    time: reservation?.time ?? "",
+    partySize: reservation?.partySize ?? 1,
     consent: reservation?.guest.consent ?? "unknown",
     rating: reservation?.rating ? String(reservation.rating) : NO_RATING,
     commentary: reservation?.commentary ?? "",
@@ -57,7 +66,7 @@ export function EditReservationDialog({
     reset,
     control,
     register,
-    formState: { isSubmitting },
+    formState: { errors, isSubmitting },
   } = useForm<EditValues>({ defaultValues: toValues(reservation) });
 
   useEffect(() => {
@@ -68,11 +77,20 @@ export function EditReservationDialog({
     if (!reservation) return;
     try {
       await api.modifyReservation(venueId, reservation.id, {
-        guest: { consent: values.consent },
+        date: values.date,
+        time: values.time,
+        partySize: values.partySize,
+        guest: { name: values.name.trim(), consent: values.consent },
         rating: values.rating === NO_RATING ? null : Number(values.rating),
         commentary: values.commentary.trim(),
       });
-      await queryClient.invalidateQueries({ queryKey: ["agenda", venueId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["agenda", venueId] }),
+        queryClient.invalidateQueries({ queryKey: ["floor", venueId] }),
+        queryClient.invalidateQueries({ queryKey: ["availability", venueId] }),
+        queryClient.invalidateQueries({ queryKey: ["pacing", venueId] }),
+        queryClient.invalidateQueries({ queryKey: ["reservation", venueId, reservation.id] }),
+      ]);
       toast.success(t("reservation.edit.done"));
       onOpenChange(false);
     } catch (err) {
@@ -82,7 +100,7 @@ export function EditReservationDialog({
 
   return (
     <Dialog open={reservation !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("reservation.edit.title")}</DialogTitle>
           <DialogDescription>
@@ -93,6 +111,29 @@ export function EditReservationDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-guest-name">{t("reservation.guestName")}</Label>
+            <Input id="edit-guest-name" maxLength={200} {...register("name")} />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="edit-date">{t("reservation.edit.date")}</Label>
+              <Input id="edit-date" type="date" disabled={reservation?.status === "attended"}
+                {...register("date", { required: true })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-time">{t("reservation.edit.time")}</Label>
+              <Input id="edit-time" type="time" step={900} disabled={reservation?.status === "attended"}
+                {...register("time", { required: true })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-party-size">{t("reservation.partySize")}</Label>
+              <Input id="edit-party-size" type="number" min={1} disabled={reservation?.status === "attended"}
+                {...register("partySize", { valueAsNumber: true, min: 1 })} />
+              {errors.partySize && <p className="text-sm text-destructive">{t("reservation.atLeastOne")}</p>}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("reservation.edit.scheduleHelp")}</p>
           <div className="space-y-2">
             <Label htmlFor="edit-consent">{t("reservation.contactConsent")}</Label>
             <Controller

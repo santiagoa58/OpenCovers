@@ -1,17 +1,13 @@
-import { useState } from "react";
 import { GaugeIcon } from "lucide-react";
 import { cn } from "cn";
-import { DayNav } from "@/components/day-nav";
 import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
 import { canEditSetup, useNavigation } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePacing } from "@/hooks/use-pacing";
 import type { PacingSlot } from "@/lib/api";
 import { useT } from "@/i18n";
-import { longDate, todayIso } from "@/lib/date";
 import {
   HIGH_FROM,
   MEDIUM_FROM,
@@ -28,25 +24,32 @@ const LEVEL: Record<PacingLevel, { bar: string; text: string; swatch: string }> 
   high: { bar: "bg-destructive", text: "text-destructive", swatch: "bg-destructive" },
 };
 
-export function PacingView({ venueId }: { venueId: string }) {
+export function PacingView({
+  venueId,
+  date,
+  time,
+  onSelectTime,
+}: {
+  venueId: string;
+  date: string;
+  time: string;
+  onSelectTime: (time: string) => void;
+}) {
   const t = useT();
   const nav = useNavigation();
-  const [date, setDate] = useState(todayIso());
   const { data, isPending, isError, error, isRefetching, refetch } = usePacing(venueId, date);
 
   const pacing = data?.pacing ?? [];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={t("pacing.title")}
-        description={
-          <>
-            <span className="first-letter:uppercase">{longDate(date)}</span> · {t("pacing.subtitle")}
-          </>
-        }
-        actions={<DayNav date={date} onChange={setDate} />}
-      />
+    <section aria-label={t("pacing.title")} className="space-y-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
+        <div>
+          <h2 className="font-display text-xl">{t("pacing.title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("pacing.floorHint")}</p>
+        </div>
+        <span className="text-sm font-medium tabular-nums">{t("floor.timeline.selected", { time })}</span>
+      </div>
 
       {isPending ? (
         <Skeleton className="h-64 w-full" />
@@ -87,7 +90,12 @@ export function PacingView({ venueId }: { venueId: string }) {
                       style={{ gridTemplateColumns: `repeat(${hour.length}, 3rem)` }}
                     >
                       {hour.map((slot) => (
-                        <SlotColumn key={slot.time} slot={slot} />
+                        <SlotColumn
+                          key={slot.time}
+                          slot={slot}
+                          selected={slot.time === time}
+                          onSelectTime={onSelectTime}
+                        />
                       ))}
                     </div>
                   ))}
@@ -106,7 +114,7 @@ export function PacingView({ venueId }: { venueId: string }) {
           </div>
         </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -121,14 +129,30 @@ function groupByHour(slots: PacingSlot[]): PacingSlot[][] {
   return groups;
 }
 
-function SlotColumn({ slot }: { slot: PacingSlot }) {
+function SlotColumn({
+  slot,
+  selected,
+  onSelectTime,
+}: {
+  slot: PacingSlot;
+  selected: boolean;
+  onSelectTime: (time: string) => void;
+}) {
   const t = useT();
   const level = pacingLevel(slot);
   const ratio = Math.min(pacingRatio(slot), 1);
   const style = LEVEL[level];
   return (
-    <div
-      className="flex flex-col items-center gap-1.5"
+    <button
+      type="button"
+      data-testid={`floor-slot-${slot.time}`}
+      aria-pressed={selected}
+      aria-label={t("pacing.slotTitle", { time: slot.time, covers: slot.covers, capacity: slot.capacity })}
+      onClick={() => onSelectTime(slot.time)}
+      className={cn(
+        "flex flex-col items-center gap-1.5 rounded-md p-1 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary",
+        selected && "bg-primary/10 ring-2 ring-primary",
+      )}
       title={t("pacing.slotTitle", { time: slot.time, covers: slot.covers, capacity: slot.capacity })}
     >
       <div className="flex h-20 w-full items-end overflow-hidden rounded-md bg-muted/60">
@@ -143,7 +167,7 @@ function SlotColumn({ slot }: { slot: PacingSlot }) {
         {slot.covers}/{slot.capacity}
       </div>
       <div className="text-[11px] text-muted-foreground tabular-nums">{slot.time}</div>
-    </div>
+    </button>
   );
 }
 

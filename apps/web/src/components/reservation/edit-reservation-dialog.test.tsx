@@ -65,7 +65,10 @@ describe("EditReservationDialog", () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     const [req] = api.calls("POST", MODIFY_PATH);
     expect(req.body).toEqual({
-      guest: { consent: "granted" },
+      date: "2026-11-20",
+      time: "20:30",
+      partySize: 2,
+      guest: { name: "Jane Doe", consent: "granted" },
       rating: 4,
       commentary: "Window seat",
     });
@@ -82,7 +85,10 @@ describe("EditReservationDialog", () => {
 
     await waitFor(() => expect(api.writes()).toHaveLength(1));
     expect(api.writes()[0].body).toEqual({
-      guest: { consent: "unknown" },
+      date: "2026-11-20",
+      time: "20:30",
+      partySize: 2,
+      guest: { name: "Jane Doe", consent: "unknown" },
       rating: 4,
       commentary: "Birthday",
     });
@@ -112,6 +118,19 @@ describe("EditReservationDialog", () => {
     await user.type(screen.getByLabelText("Note"), "x".repeat(520));
 
     expect(screen.getByLabelText("Note")).toHaveValue("x".repeat(500));
+  });
+
+  it("lets staff correct the guest label and party size", async () => {
+    const { api, user } = setup();
+    await user.clear(screen.getByLabelText("Guest name"));
+    await user.type(screen.getByLabelText("Guest name"), "Corrected Guest");
+    await user.clear(screen.getByLabelText("Party size"));
+    await user.type(screen.getByLabelText("Party size"), "3");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.writes()).toHaveLength(1));
+    expect(api.writes()[0].body).toMatchObject({
+      guest: { name: "Corrected Guest" }, partySize: 3, date: "2026-11-20", time: "20:30",
+    });
   });
 
   it("shows the API error and keeps the dialog open", async () => {

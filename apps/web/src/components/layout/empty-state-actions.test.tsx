@@ -43,7 +43,7 @@ afterEach(() => vi.unstubAllGlobals());
 const CASES: [string, () => ReactElement, string, string, string][] = [
   ["Floor plan", () => <FloorView venueId="v1" />, "No tables yet", "Add tables", "room"],
   ["Availability", () => <AvailabilityView venueId="v1" />, "No services configured", "Add services", "services"],
-  ["Pacing", () => <PacingView venueId="v1" />, "No services configured", "Add services", "services"],
+  ["Pacing", () => <PacingView venueId="v1" date="2026-11-21" time="17:00" onSelectTime={() => {}} />, "No services configured", "Add services", "services"],
 ];
 
 describe.each(CASES)("the empty state of %s", (_name, view, title, label, target) => {

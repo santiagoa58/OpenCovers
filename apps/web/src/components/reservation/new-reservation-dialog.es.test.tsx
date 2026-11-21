@@ -18,7 +18,8 @@ describe("reservation dialogs in Spanish", () => {
   afterEach(resetApiMocks);
 
   it("new reservation: title, labels, plural summary and validation message", async () => {
-    mockApi({ "GET /v1/venues/v1/tables": { body: { tables: TABLES } } });
+    mockApi({ "GET /v1/venues/v1/tables": { body: { tables: TABLES } },
+      "GET /v1/venues/v1/tables/availability": { body: { tables: TABLES.map(t => ({ id: t.id, available: true })) } } });
     const user = userEvent.setup();
     renderWithApp(
       <NewReservationDialog venueId="v1" date="2026-11-20" time="20:30" partySize={2} open onOpenChange={vi.fn()} />,
@@ -26,7 +27,7 @@ describe("reservation dialogs in Spanish", () => {
     expect(await screen.findByText("Nueva reserva")).toBeInTheDocument();
     expect(screen.getByText("2026-11-20 a las 20:30")).toBeInTheDocument();
     expect(screen.getByText("Seleccionado: 0 plazas para 2 comensales.")).toBeInTheDocument();
-    await user.click(await screen.findByRole("button", { name: "Mesa 2 · 4" }));
+    await user.click(await screen.findByRole("button", { name: /Mesa 2 · 4 · Libre/ }));
     expect(screen.getByText("Seleccionado: 4 plazas para 2 comensales.")).toBeInTheDocument();
     await user.clear(screen.getByLabelText("Tamaño del grupo"));
     await user.click(screen.getByRole("button", { name: "Crear reserva" }));

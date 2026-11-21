@@ -121,6 +121,7 @@ import {
   getEventsWatermark,
   getFloorPlan,
   getPacing,
+  getTableAvailability,
   getReservation,
   listByDate,
   listByPrincipal,
@@ -1091,14 +1092,22 @@ app.post("/v1/venues/:venueId/reservations/:id/modify", async (c) => {
   ) {
     return error(c, "invalid_request");
   }
+  if (
+    (body.date !== undefined && typeof body.date !== "string") ||
+    (body.time !== undefined && typeof body.time !== "string") ||
+    (body.partySize !== undefined && (!Number.isInteger(body.partySize) || body.partySize < 1)) ||
+    (body.guest?.name !== undefined && typeof body.guest.name !== "string")
+  ) {
+    return error(c, "invalid_request");
+  }
   const result = await modifyReservation(
     db,
     venueId,
     id,
-    { partySize: body.partySize, tableIds: body.tables, consent: body.guest?.consent, rating: body.rating, commentary: body.commentary, reconfirmation: body.reconfirmation, origin: c.get("origin") },
+    { date: body.date, time: body.time, guestName: body.guest?.name, partySize: body.partySize, tableIds: body.tables, consent: body.guest?.consent, rating: body.rating, commentary: body.commentary, reconfirmation: body.reconfirmation, origin: c.get("origin") },
     key,
   );
-  if (result.ok && (body.partySize !== undefined || body.tables !== undefined)) {
+  if (result.ok && (body.date !== undefined || body.time !== undefined || body.partySize !== undefined || body.tables !== undefined)) {
     void notifyReservation(db, venueId, result.id, result.version, "confirmation");
   }
   return writeResponse(c, result, venueId);
@@ -1133,7 +1142,7 @@ app.post("/v1/venues/:venueId/reservations/:id/status", async (c) => {
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
   const body = await c.req.json();
-  if (body.status !== "seated" && body.status !== "attended" && body.status !== "no_show") {
+  if (body.status !== "booked" && body.status !== "seated" && body.status !== "attended" && body.status !== "no_show") {
     return error(c, "invalid_request");
   }
   const result = await setStatus(db, venueId, id, body.status, key, c.get("origin"));
@@ -1236,6 +1245,18 @@ app.get("/v1/venues/:venueId/availability/explain", async (c) => {
   });
   if (!explanation) return error(c, "venue_not_found");
   return c.json(explanation);
+});
+
+app.get("/v1/venues/:venueId/tables/availability", async (c) => {
+  const venueId = c.req.param("venueId");
+  const date = c.req.query("date") ?? "";
+  const time = c.req.query("time") ?? "";
+  const size = c.req.query("partySize") ?? "";
+  if (!isDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !/^[1-9]\d*$/.test(size)) {
+    return error(c, "invalid_request");
+  }
+  const tables = await getTableAvailability(db, venueId, date, time, Number(size));
+  return c.json({ tables });
 });
 
 app.get("/v1/venues/:venueId/floor", async (c) => {

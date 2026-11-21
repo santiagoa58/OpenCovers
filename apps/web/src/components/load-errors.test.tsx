@@ -38,14 +38,14 @@ const SCREENS: [string, () => ReactElement, string, string][] = [
   ["the floor plan", () => <FloorView venueId="v1" />, "Could not load the floor plan", "No tables yet"],
   ["availability", () => <AvailabilityView venueId="v1" />, "Could not load availability", "No services configured"],
   ["the waitlist", () => <WaitlistView venueId="v1" />, "Could not load the waitlist", "No one is waiting"],
-  ["pacing", () => <PacingView venueId="v1" />, "Could not load pacing", "No services configured"],
+  ["pacing", () => <PacingView venueId="v1" date="2026-11-21" time="17:00" onSelectTime={() => {}} />, "Could not load pacing", "No services configured"],
 ];
 
 describe.each(SCREENS)("%s when it cannot be loaded", (_what, view, title, emptyText) => {
   it("says so, and does not claim there is nothing", async () => {
     renderWithApp(view());
     expect(await screen.findByText(title)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("The server could not be reached");
+    expect(screen.getByText(title).closest("[role=alert]")).toHaveTextContent("The server could not be reached");
     expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
   });
 
@@ -53,14 +53,14 @@ describe.each(SCREENS)("%s when it cannot be loaded", (_what, view, title, empty
     server.kind = "502";
     renderWithApp(view());
     expect(await screen.findByText(title)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("The server could not be reached");
+    expect(screen.getByText(title).closest("[role=alert]")).toHaveTextContent("The server could not be reached");
   });
 
   it("says the server answered with an error when the API itself reported one", async () => {
     server.kind = "500";
     renderWithApp(view());
     expect(await screen.findByText(title)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("The server answered with an error");
+    expect(screen.getByText(title).closest("[role=alert]")).toHaveTextContent("The server answered with an error");
     expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
   });
 });
@@ -81,7 +81,7 @@ describe("Try again", () => {
 
   it("stays on the error when the server is still down", async () => {
     const user = userEvent.setup();
-    renderWithApp(<PacingView venueId="v1" />);
+    renderWithApp(<PacingView venueId="v1" date="2026-11-21" time="17:00" onSelectTime={() => {}} />);
     await screen.findByText("Could not load pacing");
     await user.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled());
