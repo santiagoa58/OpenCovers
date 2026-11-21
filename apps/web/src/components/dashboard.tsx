@@ -32,12 +32,12 @@ export function Dashboard() {
   const sectionParam = useUrlParam("section");
   const views: ViewId[] = ["agenda", "floor", "availability", "waitlist", "setup", "team"];
   const requestedView = views.find((view) => view === viewParam) ?? (sectionParam ? "setup" : "agenda");
-  const active: ViewId = requestedView === "team" && role && role !== "admin" ? "agenda" : requestedView;
   const [navOpen, setNavOpen] = useState(false);
   const [section, setSection] = useState<string | null>(null);
 
   const venues = data?.venues ?? [];
   const role = venues.find((v) => v.id === venueId)?.role;
+  const active: ViewId = requestedView === "team" && role && role !== "admin" ? "agenda" : requestedView;
 
   useEffect(() => {
     if (
