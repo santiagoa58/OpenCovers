@@ -18,7 +18,7 @@ function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <PacingView venueId="v1" />
+      <PacingView venueId="v1" date="2026-11-21" time="20:00" onSelectTime={() => {}} />
     </QueryClientProvider>,
   );
 }
@@ -45,7 +45,7 @@ describe("PacingView", () => {
     expect(screen.getByText("20:00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "dinner" })).toBeInTheDocument();
     expect(String(fetchMock.mock.calls[0][0])).toMatch(
-      /^\/v1\/venues\/v1\/pacing\?date=\d{4}-\d{2}-\d{2}$/,
+      /^\/v1\/venues\/v1\/pacing\?date=2026-11-21$/,
     );
   });
 
