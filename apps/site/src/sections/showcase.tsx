@@ -47,7 +47,7 @@ export function Showcase() {
         <p className="rv" style={d(90)} aria-live="polite">{msg}</p>
         <button className="again rv" style={d(160)} type="button" onClick={reset}>Empezar de nuevo</button>
       </div>
-      <div className="ctl rv" style={d(120)} data-ui role="group" aria-label="Hora de la reserva, dos horas por reserva">
+      <fieldset className="ctl rv" style={d(120)} data-ui aria-label="Hora de la reserva, dos horas por reserva">
         {SLOTS.map((h) => {
           const who = whoAt(h);
           return (
@@ -65,7 +65,7 @@ export function Showcase() {
           );
         })}
         <button className="go" type="button" onClick={reserve}>Reservar mesa 4</button>
-      </div>
+      </fieldset>
     </section>
   );
 }
