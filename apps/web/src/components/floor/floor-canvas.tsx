@@ -321,6 +321,7 @@ export function FloorCanvas({
           const seatable = mode === "view" && !t.occupied;
           return (
             <FloorTableCard key={t.id} venueId={venueId} table={t} tableNames={tableNames} enabled={Boolean(movableInView)} onMoveRequest={onMoveRequest ? () => onMoveRequest(t.id) : undefined}>
+            {/* biome-ignore lint/a11y: The canvas node is a pointer drag handle in edit mode and a keyboard-operable table target in view mode; role and label depend on mode. */}
             <div
               style={{ left: pos.x, top: pos.y, width: NODE, height: NODE }}
               className={cn(
