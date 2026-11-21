@@ -1,1 +1,162 @@
-{}
+{
+  "apps/api/src/app.ts": {
+    "lines": 1450
+  },
+  "apps/api/src/db/schema.ts": {
+    "lines": 918
+  },
+  "apps/api/src/lib/auth.ts": {
+    "nestedTernaries": 2
+  },
+  "apps/api/src/lib/invitations.ts": {
+    "nestedTernaries": 2
+  },
+  "apps/api/src/lib/mailer.ts": {
+    "nestedTernaries": 3
+  },
+  "apps/api/src/lib/reservation-trace.ts": {
+    "nestedTernaries": 3
+  },
+  "apps/api/src/lib/reservations.ts": {
+    "nestedTernaries": 1,
+    "lines": 1887
+  },
+  "apps/api/src/lib/venue.ts": {
+    "nestedTernaries": 5
+  },
+  "apps/api/src/lib/webhooks.ts": {
+    "nestedTernaries": 1
+  },
+  "apps/mcp/src/fail.ts": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/components/auth/auth-screen.tsx": {
+    "nestedTernaries": 3
+  },
+  "apps/web/src/components/auth/demo-sign-in.tsx": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/components/availability/slot-explanation.tsx": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/components/dashboard.tsx": {
+    "nestedTernaries": 4
+  },
+  "apps/web/src/components/floor/floor-canvas.tsx": {
+    "nestedTernaries": 10,
+    "lines": 525
+  },
+  "apps/web/src/components/floor/floor-item-shape.tsx": {
+    "lines": 365
+  },
+  "apps/web/src/components/floor/floor-table-card.tsx": {
+    "nestedTernaries": 1,
+    "lines": 285
+  },
+  "apps/web/src/components/floor/move-dialog.tsx": {
+    "nestedTernaries": 2
+  },
+  "apps/web/src/components/layout/theme-toggle.tsx": {
+    "nestedTernaries": 2
+  },
+  "apps/web/src/components/pacing/pacing-view.tsx": {
+    "nestedTernaries": 3,
+    "lines": 270
+  },
+  "apps/web/src/components/preshift/pre-shift-view.tsx": {
+    "nestedTernaries": 4
+  },
+  "apps/web/src/components/printing/print-reservations-dialog.tsx": {
+    "nestedTernaries": 4,
+    "lines": 322
+  },
+  "apps/web/src/components/reservation/assign-tables-dialog.tsx": {
+    "nestedTernaries": 2
+  },
+  "apps/web/src/components/reservation/cancel-reservation-dialog.tsx": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/components/reservation/new-reservation-dialog.tsx": {
+    "nestedTernaries": 7,
+    "lines": 283
+  },
+  "apps/web/src/components/reservation/reservation-trace-dialog.tsx": {
+    "nestedTernaries": 2
+  },
+  "apps/web/src/components/setup/api-keys-card.tsx": {
+    "nestedTernaries": 3
+  },
+  "apps/web/src/components/setup/booking-policy-card.tsx": {
+    "nestedTernaries": 3
+  },
+  "apps/web/src/components/setup/create-key-dialog.tsx": {
+    "nestedTernaries": 2
+  },
+  "apps/web/src/components/setup/floor-editor.tsx": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/components/setup/online-booking-card.tsx": {
+    "nestedTernaries": 4,
+    "lines": 268
+  },
+  "apps/web/src/components/setup/public-profile-card.tsx": {
+    "nestedTernaries": 2,
+    "lines": 331
+  },
+  "apps/web/src/components/setup/service-form-dialog.tsx": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/components/setup/setup-view.tsx": {
+    "nestedTernaries": 9,
+    "lines": 426
+  },
+  "apps/web/src/components/setup/table-form-dialog.tsx": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/components/setup/venue-settings.tsx": {
+    "nestedTernaries": 5,
+    "lines": 252
+  },
+  "apps/web/src/components/team/audit-log.tsx": {
+    "nestedTernaries": 4
+  },
+  "apps/web/src/components/team/invite-dialog.tsx": {
+    "nestedTernaries": 3
+  },
+  "apps/web/src/components/team/team-view.tsx": {
+    "nestedTernaries": 4,
+    "lines": 286
+  },
+  "apps/web/src/components/time-field.tsx": {
+    "nestedTernaries": 2
+  },
+  "apps/web/src/components/ui/dropdown-menu.tsx": {
+    "lines": 255
+  },
+  "apps/web/src/lib/online-booking.ts": {
+    "nestedTernaries": 2
+  },
+  "apps/web/src/lib/pacing.ts": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/lib/theme.tsx": {
+    "nestedTernaries": 1
+  },
+  "apps/web/src/lib/url-state.ts": {
+    "nestedTernaries": 1
+  },
+  "apps/widget/src/App.tsx": {
+    "nestedTernaries": 2,
+    "lines": 561
+  },
+  "apps/widget/src/Manage.tsx": {
+    "nestedTernaries": 1,
+    "lines": 403
+  },
+  "apps/widget/src/messages.ts": {
+    "lines": 973
+  },
+  "apps/widget/src/strip.ts": {
+    "nestedTernaries": 1
+  }
+}
