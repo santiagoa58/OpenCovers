@@ -24,6 +24,7 @@ import { useT, type MessageKey } from "@/i18n";
 import type { Reconfirmation, WaitlistEntry } from "@/lib/api";
 import { longDate, todayIso } from "@/lib/date";
 import { buildPreShift, LARGE_PARTY_MIN, totalCovers, type PreShiftRow } from "@/lib/pre-shift";
+import { useTimeDisplay } from "@/lib/time-format";
 
 const ALL_SERVICES = "all";
 
@@ -146,6 +147,7 @@ export function PreShiftView({ venueId }: { venueId: string }) {
 function PreShiftRowView({ row }: { row: PreShiftRow }) {
   const t = useT();
   const { reservation, tableNames, large, commentary } = row;
+  const displayTime = useTimeDisplay();
   return (
     <li
       data-slot="preshift-row"
@@ -154,7 +156,7 @@ function PreShiftRowView({ row }: { row: PreShiftRow }) {
         large && "border-l-warning",
       )}
     >
-      <div className="font-display text-xl tabular-nums">{reservation.time}</div>
+      <div className="font-display text-xl tabular-nums">{displayTime(reservation.time)}</div>
       <div className="min-w-0">
         <div className="truncate font-medium">{reservation.guest.name || "—"}</div>
         {reservation.guest.contact && (
