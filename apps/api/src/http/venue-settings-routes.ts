@@ -30,7 +30,7 @@ app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
   if (!parsed.success) return sendError(c, "invalid_request");
   const body = parsed.data;
   // Omitting a field preserves its current value. Explicit null is supported only for nullable settings.
-  let phoneCountry = undefined as ReturnType<typeof toCountryCode> | undefined;
+  let phoneCountry: ReturnType<typeof toCountryCode> | undefined;
   if (body.phoneCountry === null) {
     phoneCountry = null;
   } else if (body.phoneCountry !== undefined) {
