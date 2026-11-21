@@ -219,6 +219,7 @@ describe("the config", () => {
     const venueId = await seedVenue({ maxAdvanceDays: 30, maxActivePerGuestPerDay: 3, blockedDates: [{ from: "2026-12-25", to: "2026-12-25" }] });
     const tooMany = Array.from({ length: 367 }, (_, i) => new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10));
     const bad: Record<string, unknown>[] = [
+      {},
       { maxAdvanceDays: -1 },
       { maxAdvanceDays: 1001 },
       { maxAdvanceDays: 1.5 },
