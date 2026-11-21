@@ -167,7 +167,7 @@ function ServiceTimeline({
               type="button"
               variant="outline"
               size="icon-sm"
-              className="size-9"
+              className="size-11 sm:size-9"
               aria-label={t("pacing.scrollEarlier")}
               disabled={!canScrollBack}
               onClick={() => scroll(-1)}
@@ -178,7 +178,7 @@ function ServiceTimeline({
               type="button"
               variant="outline"
               size="icon-sm"
-              className="size-9"
+              className="size-11 sm:size-9"
               aria-label={t("pacing.scrollLater")}
               disabled={!canScrollForward}
               onClick={() => scroll(1)}
@@ -196,7 +196,7 @@ function ServiceTimeline({
           tabIndex={0}
           onScroll={updateScrollState}
           data-testid="booking-load-strip"
-          className="relative flex min-w-0 snap-x snap-proximity gap-1.5 overflow-x-auto overscroll-x-contain px-1 pt-1 pb-3 touch-pan-x sm:gap-2"
+          className="relative flex min-w-0 snap-x snap-proximity gap-1.5 overflow-x-auto overscroll-x-contain rounded-md px-1 pt-1 pb-3 touch-pan-x focus-visible:outline-2 focus-visible:outline-primary sm:gap-2"
         >
           {slots.map((slot) => (
             <SlotColumn
