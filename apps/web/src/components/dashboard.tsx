@@ -61,14 +61,15 @@ export function Dashboard() {
   const sectionDone = useCallback(() => setSection(null), []);
   useScrollToSection(section, sectionDone);
 
-  // The tab says which screen and which venue it is, and a screen reader hears it when the page changes.
+  // The translated label changes with the selected locale, so update the document title on language switches.
   const venueName = venues.find((v) => v.id === venueId)?.name;
+  const screenLabel = viewLabel(active);
   useEffect(() => {
-    document.title = [viewLabel(active), venueName, "OpenCovers"].filter(Boolean).join(" · ");
+    document.title = [screenLabel, venueName, "OpenCovers"].filter(Boolean).join(" · ");
     return () => {
       document.title = "OpenCovers";
     };
-  }, [active, venueName]);
+  }, [screenLabel, venueName]);
 
   const mainRef = useRef<HTMLElement>(null);
 
