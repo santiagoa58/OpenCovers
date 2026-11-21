@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { Pill } from "@/components/pill";
@@ -38,10 +37,7 @@ import {
   LOCALES,
   LOCALE_NAMES,
   defaultThemeForm,
-  embedSnippet,
   parseForm,
-  scriptSnippet,
-  widgetOrigin,
   toForm,
   type FormErrors,
   type OnlineBookingForm,
@@ -49,6 +45,7 @@ import {
 } from "@/lib/online-booking";
 import { WEEKDAYS } from "@/lib/weekdays";
 import { OnlineBookingThemeEditor } from "./online-booking-theme-editor";
+import { OnlineBookingEmbed } from "./online-booking-embed";
 
 type NumberKey =
   | "minPartySize"
@@ -57,14 +54,6 @@ type NumberKey =
   | "maxAdvanceDays"
   | "selfServiceCutoffMinutes"
   | "maxOpenBookingsPerContact";
-
-/** A translated sentence with `{name}` spots filled by elements (the `<code>` words that stay as they are). */
-function withCode(text: string, parts: Record<string, string>) {
-  return text.split(/(\{\w+\})/).map((piece, i) => {
-    const name = /^\{(\w+)\}$/.exec(piece)?.[1];
-    return name && name in parts ? <code key={i}>{parts[name]}</code> : piece;
-  });
-}
 
 /** A checkbox drawn as a pill. The real input stays in the page, so labels and the keyboard work as before. */
 function Chip({
@@ -102,15 +91,6 @@ function Chip({
       </span>
     </label>
   );
-}
-
-async function copyText(text: string, done: string, failed: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(done);
-  } catch {
-    toast.error(failed);
-  }
 }
 
 export function OnlineBookingCard({ venueId }: { venueId: string }) {
@@ -270,10 +250,6 @@ export function OnlineBookingCard({ venueId }: { venueId: string }) {
   else if (!bookable)
     missing.push(t("onlinebooking.missing.bookable"));
   if (missing.length === 0) missing.push(t("onlinebooking.missing.generic"));
-  const key = data?.bookingKey ?? null;
-  const hostOk = widgetOrigin(host) !== null;
-  const snippet = key ? embedSnippet(host, key, followDark) : "";
-  const script = key ? scriptSnippet(host, key, followDark) : "";
 
   return (
     <Card>
@@ -514,126 +490,15 @@ export function OnlineBookingCard({ venueId }: { venueId: string }) {
               onReset={() => setForm({ ...form, theme: defaultThemeForm() })}
             />
 
-            <div className="space-y-4 border-t pt-6">
-              <h3 className="font-display text-lg">{t("onlinebooking.embed.title")}</h3>
-              {key ? (
-                <div className="space-y-2">
-                  <Label htmlFor="ob-key">{t("onlinebooking.key.label")}</Label>
-                  <div className="flex gap-2">
-                    <Input id="ob-key" readOnly value={key} className="font-mono" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label={t("onlinebooking.key.copyAria")}
-                      onClick={() => void copyText(key, t("onlinebooking.key.copied"), t("onlinebooking.copyFailed"))}
-                    >
-                      <CopyIcon className="size-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("onlinebooking.key.help")}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {t("onlinebooking.key.none")}
-                </p>
-              )}
-
-              <div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setConfirmRotate(true)}
-                >
-                  {t("onlinebooking.rotateKey")}
-                </Button>
-              </div>
-
-              {data.enabled && key && (
-                <div className="space-y-2">
-                  <Label htmlFor="ob-host">{t("onlinebooking.host.label")}</Label>
-                  <Input
-                    id="ob-host"
-                    value={host}
-                    onChange={(e) => setHost(e.target.value)}
-                    className="font-mono"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {withCode(t("onlinebooking.host.help"), { path: `/w/${key}` })}
-                  </p>
-                  {!hostOk && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {t("onlinebooking.host.invalid")}
-                    </p>
-                  )}
-
-                  <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
-                    <div>
-                      <Label htmlFor="ob-follow-dark">{t("onlinebooking.followDark.label")}</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {t("onlinebooking.followDark.help")}
-                      </p>
-                    </div>
-                    <Switch id="ob-follow-dark" checked={followDark} onCheckedChange={setFollowDark} />
-                  </div>
-
-                  <Label htmlFor="ob-script">{t("onlinebooking.script.label")}</Label>
-                  <div className="flex gap-2">
-                    <Textarea
-                      id="ob-script"
-                      readOnly
-                      rows={2}
-                      value={script}
-                      aria-invalid={!hostOk}
-                      className="font-mono"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label={t("onlinebooking.script.copyAria")}
-                      disabled={!hostOk}
-                      onClick={() => void copyText(script, t("onlinebooking.embedCopied"), t("onlinebooking.copyFailed"))}
-                    >
-                      <CopyIcon className="size-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {withCode(t("onlinebooking.script.help"), { script: "script-src", frame: "frame-src" })}
-                  </p>
-
-                  <Label htmlFor="ob-snippet">{t("onlinebooking.snippet.label")}</Label>
-                  <div className="flex gap-2">
-                    <Textarea
-                      id="ob-snippet"
-                      readOnly
-                      rows={3}
-                      value={snippet}
-                      aria-invalid={!hostOk}
-                      className="font-mono"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label={t("onlinebooking.snippet.copyAria")}
-                      disabled={!hostOk}
-                      onClick={() => void copyText(snippet, t("onlinebooking.embedCopied"), t("onlinebooking.copyFailed"))}
-                    >
-                      <CopyIcon className="size-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {withCode(t("onlinebooking.snippet.help"), { frame: "frame-src" })}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {t("onlinebooking.snippet.origins")}
-                  </p>
-                </div>
-              )}
-            </div>
+            <OnlineBookingEmbed
+              bookingKey={data.bookingKey}
+              enabled={data.enabled}
+              host={host}
+              followDark={followDark}
+              onHostChange={setHost}
+              onFollowDarkChange={setFollowDark}
+              onRotate={() => setConfirmRotate(true)}
+            />
 
             <SaveBar hint={t("onlinebooking.saveHint")}>
               <Button onClick={submit} disabled={save.isPending}>
