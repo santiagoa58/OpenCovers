@@ -57,9 +57,9 @@ describe("FloorView", () => {
         partySize: 4,
       }),
     ]);
-    expect(await screen.findByText("4 guests at tables")).toBeInTheDocument();
+    expect(await screen.findByText("4 guests with tables reserved")).toBeInTheDocument();
     expect(screen.getByText("Free").nextElementSibling).toHaveTextContent("2");
-    expect(screen.getByText("Occupied").nextElementSibling).toHaveTextContent("1");
+    expect(screen.getByText("Reserved").nextElementSibling).toHaveTextContent("1");
   });
 
   it("clicking a busy timeline slot selects that time on the floor", async () => {

@@ -66,7 +66,7 @@ describe("PreShiftView", () => {
 
   it("says when nobody is expected", async () => {
     setup([]);
-    expect(await screen.findByText("Nobody expected")).toBeInTheDocument();
+    expect(await screen.findByText("No matching reservations")).toBeInTheDocument();
   });
 
   it("uses the Floor plan's date and time without duplicate controls", async () => {

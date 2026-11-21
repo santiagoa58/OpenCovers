@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { longDate, todayIso } from "@/lib/date";
+import { todayIso } from "@/lib/date";
 import { useUiStore } from "@/stores/ui-store";
 import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
 import { PreShiftView } from "./pre-shift-view";
@@ -43,9 +43,9 @@ describe("PreShiftView in Spanish", () => {
 
     expect(await screen.findByText("Ana")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Previo al servicio" })).toBeInTheDocument();
-    expect(screen.getByText(longDate(todayIso()), { selector: "span.first-letter\\:uppercase" })).toBeInTheDocument();
+    expect(screen.getByText("Mesas reservadas y llegadas en la franja horaria seleccionada.")).toBeInTheDocument();
     expect(screen.getByText("Grupos grandes (6+)")).toBeInTheDocument();
-    expect(screen.getByText("Concedido")).toBeInTheDocument();
+    expect(screen.queryByText("Concedido")).not.toBeInTheDocument();
     expect(screen.queryByText("Sin preguntar")).not.toBeInTheDocument();
     expect(screen.queryByText("Lista de espera ahora (1)")).not.toBeInTheDocument();
 

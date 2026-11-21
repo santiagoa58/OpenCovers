@@ -1,4 +1,4 @@
-import type { FloorTable, Reservation, Table } from "@/lib/api";
+import type { FloorTable, PacingService, PacingSlot, Reservation, Table } from "@/lib/api";
 
 export const LARGE_PARTY_MIN = 6;
 
@@ -34,29 +34,53 @@ export function buildPreShift(
 }
 
 /**
- * The same selected time drives the floor and its Pre-shift details.
- * Show reservations occupying a table in the floor snapshot, plus arrivals in
- * the selected 15-minute pacing slot (including those still unassigned).
- * Using the floor snapshot avoids assuming a fixed dining duration.
+ * A floor snapshot identifies which bookings hold tables at the selected instant.
+ * Also include arrivals in that service's actual pacing slot (which may be 15, 30
+ * or other minutes, and need not begin at a quarter-hour boundary).
  */
+const minutesOf = (time: string): number => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+function serviceSlot(time: string, slots: PacingSlot[]): [number, number] | null {
+  const selected = minutesOf(time);
+  for (let index = 0; index < slots.length; index++) {
+    const start = minutesOf(slots[index].time);
+    const next = slots[index + 1] && minutesOf(slots[index + 1].time);
+    const previous = index > 0 ? minutesOf(slots[index - 1].time) : null;
+    const interval = next !== undefined && next > start
+      ? next - start
+      : previous !== null && start > previous
+        ? start - previous
+        : 15;
+    // Slots from the API are sorted within each service.
+    if (selected >= start && selected < start + interval) return [start, start + interval];
+  }
+  return null;
+}
+
 export function rowsForFloorTime(
   rows: PreShiftRow[],
   selectedTime: string,
   floorTables: FloorTable[],
+  pacing: PacingService[] = [],
 ): PreShiftRow[] {
-  const occupiedIds = new Set(
+  const reservedIds = new Set(
     floorTables
       .filter((table) => table.occupied && table.reservationId)
       .map((table) => table.reservationId),
   );
-  const [hours, minutes] = selectedTime.split(":").map(Number);
-  const slotStart = Math.floor((hours * 60 + minutes) / 15) * 15;
+  const selected = minutesOf(selectedTime);
+  const defaultStart = Math.floor(selected / 15) * 15;
+  const byService = new Map(pacing.map((service) => [service.service, service.slots]));
 
   return rows.filter(({ reservation }) => {
-    if (occupiedIds.has(reservation.id)) return true;
-    const [hour, minute] = reservation.time.split(":").map(Number);
-    const arrival = hour * 60 + minute;
-    return arrival >= slotStart && arrival < slotStart + 15;
+    if (reservedIds.has(reservation.id)) return true;
+    const [start, end] = serviceSlot(selectedTime, byService.get(reservation.service) ?? [])
+      ?? [defaultStart, defaultStart + 15];
+    const arrival = minutesOf(reservation.time);
+    return arrival >= start && arrival < end;
   });
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FloorTable, Reservation, Table } from "@/lib/api";
+import type { FloorTable, PacingService, Reservation, Table } from "@/lib/api";
 import { buildPreShift, rowsForFloorTime, totalCovers } from "@/lib/pre-shift";
 
 function reservation(overrides: Partial<Reservation>): Reservation {
@@ -90,6 +90,24 @@ describe("buildPreShift", () => {
       .toEqual(["earlier", "at-start", "in-slot"]);
     expect(rowsForFloorTime(rows, "20:15", []).map((r) => r.reservation.id))
       .toEqual(["next-slot"]);
+  });
+
+  it("uses actual service slots, even when they start off the quarter-hour", () => {
+    const rows = buildPreShift([
+      reservation({ id: "before", time: "16:30" }),
+      reservation({ id: "first", time: "16:40" }),
+      reservation({ id: "middle", time: "16:55" }),
+      reservation({ id: "next", time: "17:10" }),
+    ], tables, null);
+    const pacing: PacingService[] = [{ service: "dinner", slots: [
+      { time: "16:10", covers: 1, capacity: 10 },
+      { time: "16:40", covers: 2, capacity: 10 },
+      { time: "17:10", covers: 1, capacity: 10 },
+    ] }];
+    expect(rowsForFloorTime(rows, "16:45", [], pacing).map((r) => r.reservation.id))
+      .toEqual(["first", "middle"]);
+    expect(rowsForFloorTime(rows, "17:10", [], pacing).map((r) => r.reservation.id))
+      .toEqual(["next"]);
   });
 
   it("flags large parties and totals covers", () => {

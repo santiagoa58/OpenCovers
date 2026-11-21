@@ -44,13 +44,12 @@ export function PacingView({
   const pacing = data?.pacing ?? [];
 
   return (
-    <section aria-label={t("pacing.title")} className="space-y-4">
+    <section aria-labelledby="floor-pacing-title" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
         <div>
-          <h2 className="font-display text-xl">{t("pacing.title")}</h2>
+          <h2 id="floor-pacing-title" className="font-display text-xl">{t("pacing.title")}</h2>
           <p className="text-sm text-muted-foreground">{t("pacing.floorHint")}</p>
         </div>
-        <span className="text-sm font-medium tabular-nums">{t("floor.timeline.selected", { time: displayTime(time) })}</span>
       </div>
 
       {isPending ? (
@@ -77,7 +76,7 @@ export function PacingView({
             return (
               <section key={service.service} className="space-y-2">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-1">
-                  <h2 className="font-display text-lg first-letter:uppercase">{service.service}</h2>
+                  <h3 className="font-display text-lg first-letter:uppercase">{service.service}</h3>
                   <span className="text-sm text-muted-foreground tabular-nums">
                     {peak
                       ? t("pacing.peak", { covers: peak.covers, capacity: peak.capacity, time: displayTime(peak.time) })

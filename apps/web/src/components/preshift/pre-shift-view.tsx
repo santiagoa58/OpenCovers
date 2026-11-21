@@ -5,8 +5,8 @@ import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
 import { Pill, type PillTone } from "@/components/pill";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Stat } from "@/components/stat";
 import { useAgenda } from "@/hooks/use-agenda";
+import { usePacing } from "@/hooks/use-pacing";
 import { useTables } from "@/hooks/use-tables";
 import { useT, type MessageKey } from "@/i18n";
 import type { FloorTable, Reconfirmation } from "@/lib/api";
@@ -36,24 +36,29 @@ export function PreShiftView({
   const t = useT();
   const displayTime = useTimeDisplay();
   const agenda = useAgenda(venueId, date);
+  const pacing = usePacing(venueId, date);
   const tables = useTables(venueId);
 
   const rows = rowsForFloorTime(
     buildPreShift(agenda.data?.reservations ?? [], tables.data?.tables ?? [], null),
     time,
     floorTables,
+    pacing.data?.pacing ?? [],
   );
   const largeCount = rows.filter((r) => r.large).length;
   const noteCount = rows.filter((r) => r.commentary).length;
+  const reservedIds = new Set(floorTables.filter((table) => table.occupied).map((table) => table.reservationId));
 
   return (
-    <section aria-labelledby="floor-pre-shift-title" className="space-y-4 border-t pt-6">
+    <section aria-labelledby="floor-pre-shift-title" className="space-y-4 border-t pt-6 print:border-0 print:pt-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="floor-pre-shift-title" className="font-display text-2xl">{t("preshift.title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <span className="first-letter:uppercase">{longDate(date)}</span>
-            {" · "}{displayTime(time)} · {t("preshift.subtitle")}
+          <p className="mt-1 text-sm text-muted-foreground print:hidden">
+            {t("preshift.subtitle")}
+          </p>
+          <p className="hidden text-sm print:block">
+            {longDate(date)} · {displayTime(time)}
           </p>
         </div>
         <Button variant="outline" className="print:hidden" onClick={() => window.print()}>
@@ -86,15 +91,15 @@ export function PreShiftView({
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 print:hidden">
-            <Stat label={t("preshift.stat.reservations")} value={rows.length} />
-            <Stat label={t("preshift.stat.covers")} value={totalCovers(rows)} />
-            <Stat
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border bg-card px-4 py-3 sm:grid-cols-4 print:hidden">
+            <SummaryMetric label={t("preshift.stat.reservations")} value={rows.length} />
+            <SummaryMetric label={t("preshift.stat.covers")} value={totalCovers(rows)} />
+            <SummaryMetric
               label={t("preshift.stat.large", { min: LARGE_PARTY_MIN })}
               value={largeCount}
-              tone={largeCount > 0 ? "warning" : "default"}
+              warn={largeCount > 0}
             />
-            <Stat label={t("preshift.stat.notes")} value={noteCount} />
+            <SummaryMetric label={t("preshift.stat.notes")} value={noteCount} />
           </div>
           <p className="hidden text-sm print:block">
             {t("preshift.reservations", { count: rows.length })} ·{" "}
@@ -104,7 +109,7 @@ export function PreShiftView({
 
           <ul className="divide-y overflow-hidden rounded-xl border bg-card print:rounded-none print:border-x-0">
             {rows.map((row) => (
-              <PreShiftRowView key={row.reservation.id} row={row} />
+              <PreShiftRowView key={row.reservation.id} row={row} reservedAtTime={reservedIds.has(row.reservation.id)} />
             ))}
           </ul>
         </>
@@ -113,7 +118,16 @@ export function PreShiftView({
   );
 }
 
-function PreShiftRowView({ row }: { row: PreShiftRow }) {
+function SummaryMetric({ label, value, warn = false }: { label: string; value: number; warn?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("mt-0.5 font-display text-2xl tabular-nums", warn && "text-warning")}>{value}</p>
+    </div>
+  );
+}
+
+function PreShiftRowView({ row, reservedAtTime }: { row: PreShiftRow; reservedAtTime: boolean }) {
   const t = useT();
   const { reservation, tableNames, large, commentary } = row;
   const displayTime = useTimeDisplay();
@@ -128,6 +142,9 @@ function PreShiftRowView({ row }: { row: PreShiftRow }) {
       <div className="font-display text-xl tabular-nums">{displayTime(reservation.time)}</div>
       <div className="min-w-0">
         <div className="truncate font-medium">{reservation.guest.name || "—"}</div>
+        <div className="text-xs text-muted-foreground">
+          {t(reservedAtTime ? "preshift.reservedAtTime" : "preshift.arrivingInSlot")}
+        </div>
         {reservation.guest.contact && (
           <div className="truncate text-xs text-muted-foreground">{reservation.guest.contact}</div>
         )}
@@ -154,11 +171,6 @@ function PreShiftRowView({ row }: { row: PreShiftRow }) {
         </div>
         <div className="flex min-w-0 flex-col gap-2 md:basis-auto">
           <div className="flex flex-wrap items-center gap-2">
-            {(reservation.guest.consent === "granted" || reservation.guest.consent === "denied") && (
-              <Pill tone={reservation.guest.consent === "granted" ? "success" : "muted"}>
-                {t(`common.consent.${reservation.guest.consent}`)}
-              </Pill>
-            )}
             <span data-slot="reconfirmation">
               <ReconfirmationPill value={reservation.reconfirmation} />
             </span>

@@ -3,8 +3,9 @@ import { defineMessages } from "../define";
 export default defineMessages({
   en: {
     "floor.title": "Floor plan",
-    "floor.intro":
-      "Drag a reservation to a free table, or tap a seated table to see it and move it. Tap a free table to seat a walk-in.",
+    "floor.intro": "Review reservation demand, table assignments and guest details for a selected time.",
+    "floor.room.title": "Dining room",
+    "floor.room.description": "Table reservations at the selected time, not live seating status.",
     "floor.date": "Date",
     "floor.time": "Time",
     "floor.now": "Now",
@@ -15,8 +16,8 @@ export default defineMessages({
     "floor.timeline.error": "Could not load the timeline; use the time picker above.",
     "floor.timeline.slot": "{time}: {covers} of {capacity} seats reserved",
     "floor.free": "Free",
-    "floor.occupied": "Occupied",
-    "floor.seatedCovers": { one: "{count} guest at tables", other: "{count} guests at tables" },
+    "floor.occupied": "Reserved",
+    "floor.seatedCovers": { one: "{count} guest with a table reserved", other: "{count} guests with tables reserved" },
     "floor.loadWhat": "the floor plan",
     "floor.empty.title": "No tables yet",
     "floor.empty.description": "Add tables under Settings, then arrange them on the floor plan.",
@@ -63,8 +64,9 @@ export default defineMessages({
   },
   es: {
     "floor.title": "Plano de sala",
-    "floor.intro":
-      "Arrastra una reserva a una mesa libre, o toca una mesa ocupada para verla y moverla. Toca una mesa libre para sentar a un cliente sin reserva.",
+    "floor.intro": "Consulta las reservas, las mesas asignadas y los detalles de los clientes para la hora elegida.",
+    "floor.room.title": "Comedor",
+    "floor.room.description": "Reservas de mesas a la hora seleccionada, no el estado de ocupación en vivo.",
     "floor.date": "Fecha",
     "floor.time": "Hora",
     "floor.now": "Ahora",
@@ -75,8 +77,8 @@ export default defineMessages({
     "floor.timeline.error": "No se pudo cargar la línea de tiempo; usa el selector de hora.",
     "floor.timeline.slot": "{time}: {covers} de {capacity} asientos reservados",
     "floor.free": "Libres",
-    "floor.occupied": "Ocupadas",
-    "floor.seatedCovers": { one: "{count} comensal en mesas", other: "{count} comensales en mesas" },
+    "floor.occupied": "Reservadas",
+    "floor.seatedCovers": { one: "{count} comensal con mesa reservada", other: "{count} comensales con mesas reservadas" },
     "floor.loadWhat": "el plano de sala",
     "floor.empty.title": "Aún no hay mesas",
     "floor.empty.description": "Añade mesas en Ajustes y colócalas después en el plano de sala.",

@@ -5,7 +5,7 @@ import { useT } from "@/i18n";
 import { shiftIso, todayIso } from "@/lib/date";
 
 /** Previous day, date field, next day, and a way back to today. */
-export function DayNav({ date, onChange }: { date: string; onChange: (date: string) => void }) {
+export function DayNav({ date, onChange, showToday = true }: { date: string; onChange: (date: string) => void; showToday?: boolean }) {
   const t = useT();
   const today = todayIso();
   return (
@@ -35,7 +35,7 @@ export function DayNav({ date, onChange }: { date: string; onChange: (date: stri
           <ChevronRightIcon />
         </Button>
       </div>
-      {date !== today && (
+      {showToday && date !== today && (
         <Button variant="ghost" onClick={() => onChange(today)}>
           {t("agenda.dayNav.today")}
         </Button>
