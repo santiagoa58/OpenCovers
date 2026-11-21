@@ -40,7 +40,7 @@ describe("WaitlistView", () => {
     await screen.findByText("Older");
     const rows = screen.getAllByRole("listitem");
     expect(within(rows[0]).getByText("Older")).toBeInTheDocument();
-    expect(within(rows[0]).getByLabelText("Position 1")).toBeInTheDocument();
+    expect(within(rows[0]).getByText("Position 1")).toBeInTheDocument();
     expect(within(rows[1]).getByText("Newer")).toBeInTheDocument();
     expect(screen.getByText("Parties").nextElementSibling).toHaveTextContent("2");
     expect(screen.getByText("Guests").nextElementSibling).toHaveTextContent("7");
