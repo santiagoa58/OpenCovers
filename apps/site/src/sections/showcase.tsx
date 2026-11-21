@@ -47,15 +47,14 @@ export function Showcase() {
         <p className="rv" style={d(90)} aria-live="polite">{msg}</p>
         <button className="again rv" style={d(160)} type="button" onClick={reset}>Empezar de nuevo</button>
       </div>
-      <div className="ctl rv" style={d(120)} data-ui role="radiogroup" aria-label="Hora de la reserva, dos horas por reserva">
+      <div className="ctl rv" style={d(120)} data-ui role="group" aria-label="Hora de la reserva, dos horas por reserva">
         {SLOTS.map((h) => {
           const who = whoAt(h);
           return (
             <button
               key={h}
               type="button"
-              role="radio"
-              aria-checked={sel === h}
+              aria-pressed={sel === h}
               data-taken={!!who}
               className="row"
               onClick={() => setSel(h)}
