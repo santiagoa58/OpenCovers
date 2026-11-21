@@ -119,6 +119,13 @@ export interface WaitlistEntry {
   createdAt: string;
 }
 
+export interface TableAvailability {
+  id: string;
+  available: boolean;
+  reservedBy?: string;
+  reservedUntil?: string;
+}
+
 export interface FloorTable {
   id: string;
   name: string;
@@ -269,6 +276,11 @@ export const api = {
       `/v1/venues/${venueId}/floor${
         date && time ? `?date=${date}&time=${time}` : ""
       }`,
+    ),
+
+  getTableAvailability: (venueId: string, date: string, time: string, partySize: number) =>
+    request<{ tables: TableAvailability[] }>(
+      `/v1/venues/${venueId}/tables/availability?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&partySize=${partySize}`,
     ),
 
   getPacing: (venueId: string, date: string) =>
