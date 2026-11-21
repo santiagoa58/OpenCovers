@@ -13,9 +13,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { StaffNoteField } from "@/components/reservation/staff-note-field";
 import { Input } from "@/components/ui/input";
 import { TimeField } from "@/components/time-field";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -24,7 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConsentSelect } from "@/components/reservation/consent-select";
-import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX, type Consent, type Reservation } from "@/lib/api";
 import { formatReservationCommentary, parseReservationCommentary } from "@/lib/reservation-commentary";
@@ -135,12 +135,12 @@ export function EditReservationDialog({
                 )}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-party-size">{t("reservation.partySize")}</Label>
+            <Field>
+              <FieldLabel htmlFor="edit-party-size">{t("reservation.partySize")}</FieldLabel>
               <Input id="edit-party-size" type="number" min={1} disabled={reservation?.status === "attended"}
                 {...register("partySize", { valueAsNumber: true, min: 1 })} />
-              {errors.partySize && <p className="text-sm text-destructive">{t("reservation.atLeastOne")}</p>}
-            </div>
+              <FieldError>{errors.partySize ? t("reservation.atLeastOne") : null}</FieldError>
+            </Field>
           </div>
           <p className="text-xs text-muted-foreground">{t("reservation.edit.scheduleHelp")}</p>
           <div className="space-y-2">
@@ -177,19 +177,12 @@ export function EditReservationDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <ReservationAnnotations commentary={reservation?.commentary} includeStaffNotes={false} />
-            <Label htmlFor="edit-commentary">{t("reservation.note")}</Label>
-            <Textarea
-              id="edit-commentary"
-              maxLength={staffNoteMax}
-              placeholder={t("reservation.notePlaceholder")}
-              {...register("commentary")}
-            />
-            <p className="text-sm text-muted-foreground">
-              {t("reservation.noteHint", { max: staffNoteMax })}
-            </p>
-          </div>
+          <StaffNoteField
+            id="edit-commentary"
+            maxLength={staffNoteMax}
+            bookingCommentary={reservation?.commentary}
+            {...register("commentary")}
+          />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
