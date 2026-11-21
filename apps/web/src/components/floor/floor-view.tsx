@@ -1,37 +1,29 @@
 import { errorMessage } from "@/lib/error-message";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArmchairIcon, PlusIcon, PrinterIcon, UserRoundCheckIcon } from "lucide-react";
+import { PlusIcon, PrinterIcon, UserRoundCheckIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DayNav } from "@/components/day-nav";
-import { EmptyState } from "@/components/empty-state";
-import { LoadError } from "@/components/load-error";
 import { PageHeader } from "@/components/layout/page-header";
-import { canEditSetup, useNavigation } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
 import { TimeField } from "@/components/time-field";
-import { Skeleton } from "@/components/ui/skeleton";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
 import { NewReservationDialog } from "@/components/reservation/new-reservation-dialog";
 import { PlanningConflictsBanner } from "@/components/floor/planning-conflicts-banner";
-import { FloorCanvas } from "@/components/floor/floor-canvas";
-import { FloorSkinToggle } from "@/components/floor/floor-skin-toggle";
 import { PacingView } from "@/components/pacing/pacing-view";
 import { PreShiftView } from "@/components/preshift/pre-shift-view";
 import { PrintReservationsDialog } from "@/components/printing/print-reservations-dialog";
 import { MoveDialog } from "@/components/floor/move-dialog";
+import { FloorRoom } from "@/components/floor/floor-room";
 import { useFloor } from "@/hooks/use-floor";
 import { useFloorItems } from "@/hooks/use-floor-items";
 import { api, type FloorTable } from "@/lib/api";
 import { useT } from "@/i18n";
 import { nowTime, todayIso, venueNow } from "@/lib/date";
 import { setUrlParams, useUrlDate, useUrlTime } from "@/lib/url-state";
-import { useTimeDisplay } from "@/lib/time-format";
 
 export function FloorView({ venueId, timezone }: { venueId: string; timezone?: string }) {
   const t = useT();
-  const nav = useNavigation();
-  const displayTime = useTimeDisplay();
   const clock = timezone ? venueNow(timezone) : { date: todayIso(), time: nowTime() };
   const [date, setDate] = useUrlDate(clock.date);
   const [time, setTime] = useUrlTime(clock.time);
@@ -54,10 +46,6 @@ export function FloorView({ venueId, timezone }: { venueId: string; timezone?: s
   const bookingTables = tables.map((table) => ({ ...table, bookable: bookability.get(table.id) }));
   const bookableCount = bookingAvailability.data ? bookingTables.filter((table) => table.bookable).length : null;
   const items = itemsData?.items ?? [];
-
-  const occupied = tables.filter((t) => t.occupied).length;
-  const free = tables.length - occupied;
-  const seatedCovers = tables.reduce((n, t) => n + (t.occupied ? (t.partySize ?? 0) : 0), 0);
 
   const move = useMutation({
     mutationFn: ({ reservationId, targetTableId }: { reservationId: string; targetTableId: string }) =>
@@ -125,75 +113,30 @@ export function FloorView({ venueId, timezone }: { venueId: string; timezone?: s
         />
       </div>
 
-      <section aria-labelledby="floor-room-title" data-testid="floor-room" className="space-y-4 border-t pt-6 print:hidden">
-        <div className="flex flex-wrap items-end justify-between gap-3 px-1">
-          <div>
-            <h2 id="floor-room-title" className="font-display text-xl">{t("floor.room.title")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("floor.room.description")}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span data-testid="floor-selected-time" className="text-sm text-muted-foreground tabular-nums">
-              {t("floor.timeline.selected", { time: displayTime(time) })}
-            </span>
-            {tables.length > 0 && <FloorSkinToggle />}
-          </div>
-        </div>
-
-        {tables.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-sm">
-            <Legend tone="free" label={t("floor.free")} value={free} />
-            <Legend tone="occupied" label={t("floor.occupied")} value={occupied} />
-            {bookableCount !== null && (
-              <span className="font-medium tabular-nums">{t("floor.planning.bookable", { count: bookableCount })}</span>
-            )}
-            {bookingAvailability.isError && (
-              <span role="status" className="text-destructive">{t("floor.planning.availabilityError")}</span>
-            )}
-            <span className="text-muted-foreground tabular-nums">{t("floor.seatedCovers", { count: seatedCovers })}</span>
-          </div>
-        )}
-
-        {isPending ? (
-          <Skeleton className="h-[480px] w-full" />
-        ) : isError && !data ? (
-          <LoadError what={t("floor.loadWhat")} error={error} retrying={isRefetching} onRetry={() => void refetch()} />
-        ) : tables.length === 0 ? (
-          <EmptyState
-            icon={ArmchairIcon}
-            title={t("floor.empty.title")}
-            description={t("floor.empty.description")}
-            action={
-              nav && canEditSetup(nav.role) ? (
-                <Button className="mt-2" onClick={() => nav.goTo("setup", "room")}>
-                  {t("floor.empty.action")}
-                </Button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <FloorCanvas
-            tables={bookingTables}
-            items={items}
-            mode="view"
-            venueId={venueId}
-            onSeat={(tableId) => {
-              const table = tables.find((t) => t.id === tableId);
-              if (table) {
-                setBookingTable(table);
-                setBookingOpen(true);
-              }
-            }}
-            onMove={(reservationId, targetTableId) =>
-              move.mutate({ reservationId, targetTableId })
-            }
-            onMoveRequest={(tableId) => {
-              const table = tables.find((t) => t.id === tableId);
-              if (table?.reservationId) setMoveFrom(table);
-            }}
-          />
-        )}
-
-      </section>
+      <FloorRoom
+        venueId={venueId}
+        time={time}
+        tables={tables}
+        bookingTables={bookingTables}
+        items={items}
+        bookableCount={bookableCount}
+        availabilityError={bookingAvailability.isError}
+        loading={isPending}
+        error={isError && !data ? error : null}
+        retrying={isRefetching}
+        onRetry={() => void refetch()}
+        onSeat={(tableId) => {
+          const table = tables.find((candidate) => candidate.id === tableId);
+          if (!table) return;
+          setBookingTable(table);
+          setBookingOpen(true);
+        }}
+        onMove={(reservationId, targetTableId) => move.mutate({ reservationId, targetTableId })}
+        onMoveRequest={(tableId) => {
+          const table = tables.find((candidate) => candidate.id === tableId);
+          if (table?.reservationId) setMoveFrom(table);
+        }}
+      />
 
       {data && (
         <PreShiftView
@@ -244,19 +187,3 @@ export function FloorView({ venueId, timezone }: { venueId: string; timezone?: s
   );
 }
 
-function Legend({ tone, label, value }: { tone: "free" | "occupied"; label: string; value: number }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span
-        aria-hidden="true"
-        className={
-          tone === "occupied"
-            ? "size-3 rounded-full border-2 border-success bg-success-soft"
-            : "size-3 rounded-full border-2 border-wood-edge bg-tabletop"
-        }
-      />
-      <span className="font-medium">{label}</span>
-      <span className="text-muted-foreground tabular-nums">{value}</span>
-    </span>
-  );
-}
