@@ -40,8 +40,8 @@ export function PlanningConflictsBanner({ venueId, date }: { venueId: string; da
   if (!conflicts.length && !turnovers.length && !exceptions.length && !capacityConflict) return null;
   const actualConflicts = conflicts.length > 0 || capacityConflict;
   let summary = t("floor.planning.savedIssues");
-  if (capacityConflict) summary = t("floor.planning.capacityHeading");
-  else if (conflicts.length > 0) summary = t("floor.planning.conflicts", { count: conflicts.length });
+  if (conflicts.length > 0) summary = t("floor.planning.conflicts", { count: conflicts.length });
+  else if (capacityConflict) summary = t("floor.planning.capacityHeading");
 
   return (
     <details
