@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { TimeField } from "@/components/time-field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -25,8 +26,6 @@ import {
 import { ConsentSelect } from "@/components/reservation/consent-select";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX, type Consent, type Reservation } from "@/lib/api";
-import { useTimeDisplay } from "@/lib/time-format";
-import { useUiStore } from "@/stores/ui-store";
 
 interface EditValues {
   name: string;
@@ -62,15 +61,12 @@ export function EditReservationDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useT();
-  const displayTime = useTimeDisplay();
-  const timeFormat = useUiStore((s) => s.timeFormat);
   const queryClient = useQueryClient();
   const {
     handleSubmit,
     reset,
     control,
     register,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<EditValues>({ defaultValues: toValues(reservation) });
 
@@ -120,7 +116,7 @@ export function EditReservationDialog({
             <Label htmlFor="edit-guest-name">{t("reservation.guestName")}</Label>
             <Input id="edit-guest-name" maxLength={200} {...register("name")} />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="edit-date">{t("reservation.edit.date")}</Label>
               <Input id="edit-date" type="date" disabled={reservation?.status === "attended"}
@@ -128,11 +124,12 @@ export function EditReservationDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-time">{t("reservation.edit.time")}</Label>
-              <Input id="edit-time" type="time" step={900} disabled={reservation?.status === "attended"}
-                {...register("time", { required: true })} />
-              {timeFormat === "12h" && (
-                <p className="text-xs text-muted-foreground">{displayTime(watch("time"))}</p>
-              )}
+              <Controller name="time" control={control} rules={{ required: true }}
+                render={({ field }) => (
+                  <TimeField id="edit-time" label={t("reservation.edit.time")} value={field.value} onChange={field.onChange}
+                    onBlur={field.onBlur} disabled={reservation?.status === "attended"} />
+                )}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-party-size">{t("reservation.partySize")}</Label>

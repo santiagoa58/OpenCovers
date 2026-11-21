@@ -1,10 +1,8 @@
 import { errorMessage } from "@/lib/error-message";
 import { useT } from "@/i18n";
-import { useTimeDisplay } from "@/lib/time-format";
-import { useUiStore } from "@/stores/ui-store";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TimeField } from "@/components/time-field";
 import { Label } from "@/components/ui/label";
 import { api, type Service } from "@/lib/api";
 import { ALL_WEEKDAYS, WEEKDAYS } from "@/lib/weekdays";
@@ -40,8 +39,6 @@ export function ServiceFormDialog({
   initial,
 }: ServiceFormDialogProps) {
   const t = useT();
-  const displayTime = useTimeDisplay();
-  const timeFormat = useUiStore((s) => s.timeFormat);
   const queryClient = useQueryClient();
   const editing = Boolean(initial);
   const [days, setDays] = useState<number[]>(ALL_WEEKDAYS);
@@ -49,7 +46,7 @@ export function ServiceFormDialog({
 
   const {
     register,
-    watch,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -122,24 +119,22 @@ export function ServiceFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="service-open">{t("setup.service.opens")}</Label>
-              <Input
-                id="service-open"
-                type="time"
-                {...register("openStart", { required: t("setup.service.openRequired") })}
+              <Controller name="openStart" control={control} rules={{ required: t("setup.service.openRequired") }}
+                render={({ field }) => (
+                  <TimeField id="service-open" label={t("setup.service.opens")} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+                )}
               />
-              {timeFormat === "12h" && <p className="text-xs text-muted-foreground">{displayTime(watch("openStart"))}</p>}
               {errors.openStart && (
                 <p className="text-sm text-destructive">{errors.openStart.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="service-close">{t("setup.service.closes")}</Label>
-              <Input
-                id="service-close"
-                type="time"
-                {...register("openEnd", { required: t("setup.service.closeRequired") })}
+              <Controller name="openEnd" control={control} rules={{ required: t("setup.service.closeRequired") }}
+                render={({ field }) => (
+                  <TimeField id="service-close" label={t("setup.service.closes")} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+                )}
               />
-              {timeFormat === "12h" && <p className="text-xs text-muted-foreground">{displayTime(watch("openEnd"))}</p>}
               {errors.openEnd && (
                 <p className="text-sm text-destructive">{errors.openEnd.message}</p>
               )}
