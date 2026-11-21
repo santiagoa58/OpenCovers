@@ -3,7 +3,7 @@ import { db } from "../db/client";
 import { sendError } from "./send-error";
 import { addFloorItem, deleteFloorItem, listFloorItems, updateFloorItemLayout } from "../lib/floor-items";
 import { deleteService, deleteTable, listServices, parseDays, listTables, updateTableLayout, upsertService, upsertTable } from "../lib/catalog";
-import type { AppEnv } from "../app";
+import type { AppEnv } from "./types";
 
 function isPartyLimit(value: unknown): boolean {
   return value === undefined || value === null || (Number.isInteger(value) && (value as number) >= 1);
