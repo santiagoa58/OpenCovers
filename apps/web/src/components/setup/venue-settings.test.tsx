@@ -18,6 +18,7 @@ const CONFIG = {
   leadTimeMinutes: 60,
   lastSeatingOffsetMinutes: 45,
   overbookingCeiling: 0,
+  turnTimes: [{ upTo: 1000, minutes: 90 }],
 };
 
 function json(body: unknown, status = 200) {
@@ -97,6 +98,7 @@ describe("VenueSettings overbooking ceiling", () => {
       leadTimeMinutes: 60,
       lastSeatingOffsetMinutes: 45,
       overbookingCeiling: 6,
+      turnTimes: [{ upTo: 1000, minutes: 90 }],
     });
   });
 

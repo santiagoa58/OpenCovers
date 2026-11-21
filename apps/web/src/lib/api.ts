@@ -96,6 +96,8 @@ export interface VenueConfig {
   leadTimeMinutes: number;
   lastSeatingOffsetMinutes: number;
   overbookingCeiling: number;
+  /** Party-size turn time rules; one row means the same booking length for all parties. */
+  turnTimes?: { upTo: number; minutes: number }[];
   maxAdvanceDays: number | null;
   maxActivePerGuestPerDay: number | null;
   blockedDates: { from: string; to: string }[];
@@ -371,6 +373,7 @@ export const api = {
       leadTimeMinutes?: number;
       lastSeatingOffsetMinutes?: number;
       overbookingCeiling?: number;
+      turnTimes?: { upTo: number; minutes: number }[];
       maxAdvanceDays?: number | null;
       maxActivePerGuestPerDay?: number | null;
       blockedDates?: { from: string; to: string }[];
