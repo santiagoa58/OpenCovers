@@ -90,16 +90,16 @@ export function NewReservationDialog({
   }
 
   async function onSubmit(values: FormValues) {
-    if (tableAvailability.isPending || tableAvailability.isError || unavailableSelected) {
-      toast.error(t("reservation.tableAvailability.refresh"));
-      return;
-    }
     if (selected.length === 0) {
       toast.error(t("reservation.selectTable"));
       return;
     }
     if (values.partySize > totalSeats) {
       toast.error(t("reservation.partyTooLarge"));
+      return;
+    }
+    if (tableAvailability.isPending || tableAvailability.isError || unavailableSelected) {
+      toast.error(t("reservation.tableAvailability.refresh"));
       return;
     }
     try {
