@@ -8,6 +8,7 @@ import { TimeField } from "@/components/time-field";
 import { LoadError } from "@/components/load-error";
 import { useAgenda } from "@/hooks/use-agenda";
 import { useTables } from "@/hooks/use-tables";
+import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
 import { useT, type MessageKey } from "@/i18n";
 import { api, type FloorTable, type Reconfirmation } from "@/lib/api";
 import { longDate, nowTime } from "@/lib/date";
@@ -302,7 +303,7 @@ function ReservationPrintSheet({
                   <span className="font-semibold">{reservation.guest.name || "—"}</span>
                   {reservation.date !== date && <span className="block text-xs">{longDate(reservation.date)}</span>}
                   {reservation.guest.contact && <span className="block text-xs">{reservation.guest.contact}</span>}
-                  {includeNotes && commentary && <span className="mt-1 block text-xs">{t("preshift.print.note", { note: commentary })}</span>}
+                  <ReservationAnnotations commentary={commentary} variant="print" includeStaffNotes={includeNotes} />
                 </td>
                 <td className="py-2 pr-2 tabular-nums">{reservation.partySize}</td>
                 <td className="py-2 pr-2">{tableNames.length ? tableNames.join(", ") : t("preshift.unassigned")}</td>
