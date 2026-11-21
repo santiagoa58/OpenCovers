@@ -94,6 +94,25 @@ describe("EditReservationDialog", () => {
     });
   });
 
+  it("edits staff notes without losing an imported sheet reference", async () => {
+    const api = mockApi({ [MODIFY]: { body: RESERVATION } });
+    renderWithApp(
+      <EditReservationDialog
+        venueId="v1"
+        reservation={{ ...RESERVATION, commentary: "Original sheet reference: #302" }}
+        onOpenChange={() => {}}
+      />,
+    );
+    const user = userEvent.setup();
+    expect(screen.getByText(/Original sheet reference:/).parentElement).toHaveTextContent("#302");
+    expect(screen.getByLabelText("Staff note")).toHaveValue("");
+    await user.type(screen.getByLabelText("Staff note"), "Quiet table");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.writes()).toHaveLength(1));
+    expect((api.writes()[0].body as { commentary: string }).commentary)
+      .toBe("Original sheet reference: #302\nStaff note: Quiet table");
+  });
+
   it("sends a numeric rating and clears it with null", async () => {
     const { api, user } = setup();
     const rating = screen.getByRole("combobox", { name: "Rating" });
