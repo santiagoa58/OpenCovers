@@ -23,6 +23,7 @@ import {
 import { auth, mcpRemote, trustedOrigins } from "./lib/auth";
 import { getReservationTrace } from "./lib/reservation-trace";
 import { registerRoomRoutes } from "./http/room-routes";
+import { staffReservationSchema, staffWalkInSchema, staffWaitlistSchema, staffModifySchema, staffStatusSchema } from "./http/staff-reservation-schemas";
 import type { AppEnv } from "./http/types";
 import { registerVenueSettingsRoutes } from "./http/venue-settings-routes";
 import { staffOriginGuard } from "./lib/staff-origin";
@@ -118,10 +119,6 @@ import {
   type Reservation,
   type WriteResult,
 } from "./lib/reservations";
-import { isConsent } from "./lib/consent";
-import { isCommentary } from "./lib/commentary";
-import { isRating } from "./lib/rating";
-import { isReconfirmation } from "./lib/reconfirmation";
 import { createVenue, erase } from "./lib/venue";
 import { effectivePublicZones, LOCALES } from "./lib/online-booking";
 import {
@@ -848,25 +845,9 @@ app.post("/v1/venues/:venueId/reservations", async (c) => {
   const venueId = c.req.param("venueId");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (
-    hasInvalidConsent(body) ||
-    hasInvalidRating(body) ||
-    hasInvalidCommentary(body) ||
-    hasInvalidReconfirmation(body)
-  ) {
-    return error(c, "invalid_request");
-  }
-  if (
-    typeof body.date !== "string" ||
-    typeof body.time !== "string" ||
-    typeof body.partySize !== "number" ||
-    (body.tables !== undefined &&
-      (!Array.isArray(body.tables) ||
-        body.tables.some((t: unknown) => typeof t !== "string")))
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = staffReservationSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await createReservation(
     db,
     venueId,
@@ -900,16 +881,9 @@ app.post("/v1/venues/:venueId/reservations/walk-in", async (c) => {
   const venueId = c.req.param("venueId");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (typeof body.partySize !== "number") return error(c, "invalid_request");
-  if (
-    hasInvalidConsent(body) ||
-    hasInvalidRating(body) ||
-    hasInvalidCommentary(body) ||
-    body.reconfirmation !== undefined
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = staffWalkInSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await walkIn(
     db,
     venueId,
@@ -948,8 +922,9 @@ app.get("/v1/venues/:venueId/waitlist", async (c) => {
 
 app.post("/v1/venues/:venueId/waitlist", async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (typeof body.partySize !== "number") return error(c, "invalid_request");
+  const parsed = staffWaitlistSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await addWaitlist(
     db,
     venueId,
@@ -994,24 +969,10 @@ app.post("/v1/venues/:venueId/reservations/:id/modify", async (c) => {
   const id = c.req.param("id");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (typeof body !== "object" || Object.keys(body).length === 0) {
-    return error(c, "invalid_request");
-  }
-  if (
-    hasInvalidConsent(body) ||
-    hasInvalidRating(body) ||
-    hasInvalidCommentary(body) ||
-    hasInvalidReconfirmation(body)
-  ) {
-    return error(c, "invalid_request");
-  }
-  if (
-    (body.date !== undefined && typeof body.date !== "string") ||
-    (body.time !== undefined && typeof body.time !== "string") ||
-    (body.partySize !== undefined && (!Number.isInteger(body.partySize) || body.partySize < 1)) ||
-    (body.guest?.name !== undefined && typeof body.guest.name !== "string")
-  ) {
+  const parsed = staffModifySchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  if (Object.keys(body).length === 0 || (Object.keys(body).length === 1 && body.guest && Object.keys(body.guest).length === 0)) {
     return error(c, "invalid_request");
   }
   const result = await modifyReservation(
@@ -1055,10 +1016,9 @@ app.post("/v1/venues/:venueId/reservations/:id/status", async (c) => {
   const id = c.req.param("id");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (body.status !== "booked" && body.status !== "seated" && body.status !== "attended" && body.status !== "no_show") {
-    return error(c, "invalid_request");
-  }
+  const parsed = staffStatusSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await setStatus(db, venueId, id, body.status, key, c.get("origin"));
   return writeResponse(c, result, venueId);
 });
@@ -1356,30 +1316,6 @@ async function authorizeAdmin(c: Context<AppEnv>): Promise<{ principal: string }
       : error(c, "forbidden");
   }
   return { principal: admin.principal };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function hasInvalidConsent(body: unknown): boolean {
-  const consent = isRecord(body) && isRecord(body.guest) ? body.guest.consent : undefined;
-  return consent !== undefined && !isConsent(consent);
-}
-
-function hasInvalidRating(body: unknown): boolean {
-  const rating = isRecord(body) ? body.rating : undefined;
-  return rating !== undefined && rating !== null && !isRating(rating);
-}
-
-function hasInvalidReconfirmation(body: unknown): boolean {
-  const reconfirmation = isRecord(body) ? body.reconfirmation : undefined;
-  return reconfirmation !== undefined && !isReconfirmation(reconfirmation);
-}
-
-function hasInvalidCommentary(body: unknown): boolean {
-  const commentary = isRecord(body) ? body.commentary : undefined;
-  return commentary !== undefined && !isCommentary(commentary);
 }
 
 function isRole(value: unknown): value is "read" | "write" | "admin" {
