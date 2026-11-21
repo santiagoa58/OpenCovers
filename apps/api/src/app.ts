@@ -1091,14 +1091,22 @@ app.post("/v1/venues/:venueId/reservations/:id/modify", async (c) => {
   ) {
     return error(c, "invalid_request");
   }
+  if (
+    (body.date !== undefined && typeof body.date !== "string") ||
+    (body.time !== undefined && typeof body.time !== "string") ||
+    (body.partySize !== undefined && (!Number.isInteger(body.partySize) || body.partySize < 1)) ||
+    (body.guest?.name !== undefined && typeof body.guest.name !== "string")
+  ) {
+    return error(c, "invalid_request");
+  }
   const result = await modifyReservation(
     db,
     venueId,
     id,
-    { partySize: body.partySize, tableIds: body.tables, consent: body.guest?.consent, rating: body.rating, commentary: body.commentary, reconfirmation: body.reconfirmation, origin: c.get("origin") },
+    { date: body.date, time: body.time, guestName: body.guest?.name, partySize: body.partySize, tableIds: body.tables, consent: body.guest?.consent, rating: body.rating, commentary: body.commentary, reconfirmation: body.reconfirmation, origin: c.get("origin") },
     key,
   );
-  if (result.ok && (body.partySize !== undefined || body.tables !== undefined)) {
+  if (result.ok && (body.date !== undefined || body.time !== undefined || body.partySize !== undefined || body.tables !== undefined)) {
     void notifyReservation(db, venueId, result.id, result.version, "confirmation");
   }
   return writeResponse(c, result, venueId);
