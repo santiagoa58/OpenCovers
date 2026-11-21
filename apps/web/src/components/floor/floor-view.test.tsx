@@ -92,8 +92,8 @@ describe("FloorView", () => {
         { time: "16:45", capacity: 10, covers: 2 },
       ] }] } },
       "GET /v1/venues/v1/agenda": { body: { reservations: [
-        { id: "r1", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "First Guest" } },
-        { id: "r2", status: "booked", time: "16:45", partySize: 2, service: "Dinner", guest: { name: "Later Guest" } },
+        { id: "r1", date: "2026-11-21", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "First Guest" } },
+        { id: "r2", date: "2026-11-21", status: "booked", time: "16:45", partySize: 2, service: "Dinner", guest: { name: "Later Guest" } },
       ] } },
     });
     renderWithApp(<FloorView venueId="v1" />);
@@ -118,7 +118,7 @@ describe("FloorView", () => {
         { time: "16:45", capacity: 10, covers: 2 },
       ] }] } },
       "GET /v1/venues/v1/agenda": { body: { reservations: [
-        { id: "r1", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "Guest" }, commentary: "Peanut allergy" },
+        { id: "r1", date: "2026-11-21", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "Guest" }, commentary: "Peanut allergy" },
       ] } },
     });
     renderWithApp(<FloorView venueId="v1" />);
