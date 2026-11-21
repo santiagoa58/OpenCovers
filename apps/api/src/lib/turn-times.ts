@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export interface TurnTime {
   upTo: number;
   minutes: number;
@@ -13,20 +15,18 @@ export function turnMinutes(turnTimes: TurnTime[], partySize: number): number {
   return (turnTimes.find((t) => t.upTo >= partySize) ?? turnTimes[turnTimes.length - 1]).minutes;
 }
 
+/** Validate the complete schedule, including ascending, non-overlapping party-size thresholds. */
+export const turnTimesSchema = z.array(
+  z.strictObject({
+    upTo: z.number().int().min(1),
+    minutes: z.number().int().min(TURN_MINUTES_MIN).max(TURN_MINUTES_MAX),
+  }),
+)
+  .max(TURN_TIMES_MAX_ROWS)
+  .refine((rows) => rows.every((row, index) => index === 0 || row.upTo > rows[index - 1].upTo));
+
+/** Preserve the existing null-on-invalid contract for the booking engine and stored settings. */
 export function parseTurnTimes(value: unknown): TurnTime[] | null {
-  if (!Array.isArray(value) || value.length > TURN_TIMES_MAX_ROWS) return null;
-  const rows: TurnTime[] = [];
-  for (const row of value) {
-    if (typeof row !== "object" || row === null || Array.isArray(row)) return null;
-    if (Object.keys(row).some((k) => k !== "upTo" && k !== "minutes")) return null;
-    const { upTo, minutes } = row as Record<string, unknown>;
-    if (!Number.isInteger(upTo) || (upTo as number) < 1) return null;
-    if (!Number.isInteger(minutes) || (minutes as number) < TURN_MINUTES_MIN || (minutes as number) > TURN_MINUTES_MAX) {
-      return null;
-    }
-    const previous = rows[rows.length - 1];
-    if (previous && (upTo as number) <= previous.upTo) return null;
-    rows.push({ upTo: upTo as number, minutes: minutes as number });
-  }
-  return rows;
+  const parsed = turnTimesSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
