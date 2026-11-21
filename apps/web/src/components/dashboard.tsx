@@ -51,6 +51,7 @@ export function Dashboard() {
   const goTo = useCallback((view: ViewId, to?: string) => {
     setSection(to ?? null);
     const target = to ? sectionForTarget(to) : undefined;
+    const changedScreen = view !== active;
     setUrlParams({
       view,
       section: view === "setup" ? (target ?? (changedScreen ? null : sectionParam)) : null,
