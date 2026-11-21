@@ -39,16 +39,15 @@ describe("PreShiftView in Spanish", () => {
         },
       },
     });
-    renderWithApp(<PreShiftView venueId="v1" />);
+    renderWithApp(<PreShiftView venueId="v1" date={todayIso()} time="20:30" floorTables={[]} />);
 
     expect(await screen.findByText("Ana")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Previo al servicio" })).toBeInTheDocument();
     expect(screen.getByText(longDate(todayIso()), { selector: "span.first-letter\\:uppercase" })).toBeInTheDocument();
     expect(screen.getByText("Grupos grandes (6+)")).toBeInTheDocument();
     expect(screen.getByText("Concedido")).toBeInTheDocument();
-    expect(screen.getByText("Sin preguntar")).toBeInTheDocument();
-    expect(screen.getByText("Lista de espera ahora (1)")).toBeInTheDocument();
-    expect(screen.getByText("Grupo de 3")).toBeInTheDocument();
+    expect(screen.queryByText("Sin preguntar")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lista de espera ahora (1)")).not.toBeInTheDocument();
 
     expect(screen.queryByRole("heading", { name: "Pre-shift" })).not.toBeInTheDocument();
     expect(screen.queryByText("Granted")).not.toBeInTheDocument();

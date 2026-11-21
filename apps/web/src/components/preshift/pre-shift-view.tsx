@@ -1,32 +1,18 @@
-import { useState } from "react";
 import { ClipboardListIcon, MessageSquareTextIcon, PrinterIcon, StarIcon } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import { DayNav } from "@/components/day-nav";
 import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
-import { PageHeader } from "@/components/layout/page-header";
 import { Pill, type PillTone } from "@/components/pill";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Stat } from "@/components/stat";
 import { useAgenda } from "@/hooks/use-agenda";
-import { useServices } from "@/hooks/use-services";
 import { useTables } from "@/hooks/use-tables";
-import { useWaitlist } from "@/hooks/use-waitlist";
 import { useT, type MessageKey } from "@/i18n";
-import type { Reconfirmation, WaitlistEntry } from "@/lib/api";
-import { longDate, todayIso } from "@/lib/date";
-import { buildPreShift, LARGE_PARTY_MIN, totalCovers, type PreShiftRow } from "@/lib/pre-shift";
+import type { FloorTable, Reconfirmation } from "@/lib/api";
+import { longDate } from "@/lib/date";
+import { buildPreShift, LARGE_PARTY_MIN, rowsForFloorTime, totalCovers, type PreShiftRow } from "@/lib/pre-shift";
 import { useTimeDisplay } from "@/lib/time-format";
-
-const ALL_SERVICES = "all";
 
 const RECONFIRMATION: Record<Exclude<Reconfirmation, "none">, { labelKey: MessageKey; tone: PillTone }> = {
   requested: { labelKey: "preshift.reconfirmation.requested", tone: "info" },
@@ -35,61 +21,46 @@ const RECONFIRMATION: Record<Exclude<Reconfirmation, "none">, { labelKey: Messag
   no_answer: { labelKey: "preshift.reconfirmation.noAnswer", tone: "warning" },
 };
 
-export function PreShiftView({ venueId }: { venueId: string }) {
+/** Contextual Pre-shift section of the Floor plan; date and time come from the floor controls. */
+export function PreShiftView({
+  venueId,
+  date,
+  time,
+  floorTables,
+}: {
+  venueId: string;
+  date: string;
+  time: string;
+  floorTables: FloorTable[];
+}) {
   const t = useT();
-  const [date, setDate] = useState(todayIso());
-  const [service, setService] = useState(ALL_SERVICES);
+  const displayTime = useTimeDisplay();
   const agenda = useAgenda(venueId, date);
   const tables = useTables(venueId);
-  const services = useServices(venueId);
-  const waitlist = useWaitlist(venueId);
 
-  const rows = buildPreShift(
-    agenda.data?.reservations ?? [],
-    tables.data?.tables ?? [],
-    service === ALL_SERVICES ? null : service,
+  const rows = rowsForFloorTime(
+    buildPreShift(agenda.data?.reservations ?? [], tables.data?.tables ?? [], null),
+    time,
+    floorTables,
   );
-  const entries = waitlist.data?.entries ?? [];
   const largeCount = rows.filter((r) => r.large).length;
   const noteCount = rows.filter((r) => r.commentary).length;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={t("preshift.title")}
-        description={
-          <>
-            <span className="first-letter:uppercase print:hidden">{longDate(date)}</span>
-            <span className="hidden print:inline">
-              {longDate(date)}
-              {service !== ALL_SERVICES && ` · ${service}`}
-            </span>
-            <span className="print:hidden"> · {t("preshift.subtitle")}</span>
-          </>
-        }
-        actions={
-          <div className="flex flex-wrap items-center gap-2 print:hidden">
-            <Select value={service} onValueChange={setService}>
-              <SelectTrigger className="w-[160px]" aria-label={t("preshift.service")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_SERVICES}>{t("preshift.allServices")}</SelectItem>
-                {(services.data?.services ?? []).map((s) => (
-                  <SelectItem key={s.name} value={s.name}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <DayNav date={date} onChange={setDate} />
-            <Button variant="outline" onClick={() => window.print()}>
-              <PrinterIcon />
-              {t("preshift.print")}
-            </Button>
-          </div>
-        }
-      />
+    <section aria-labelledby="floor-pre-shift-title" className="space-y-4 border-t pt-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="floor-pre-shift-title" className="font-display text-2xl">{t("preshift.title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <span className="first-letter:uppercase">{longDate(date)}</span>
+            {" · "}{displayTime(time)} · {t("preshift.subtitle")}
+          </p>
+        </div>
+        <Button variant="outline" className="print:hidden" onClick={() => window.print()}>
+          <PrinterIcon />
+          {t("preshift.print")}
+        </Button>
+      </div>
 
       {agenda.isPending ? (
         <div className="space-y-3">
@@ -138,9 +109,7 @@ export function PreShiftView({ venueId }: { venueId: string }) {
           </ul>
         </>
       )}
-
-      <WaitlistPending entries={entries} />
-    </div>
+    </section>
   );
 }
 
@@ -185,9 +154,11 @@ function PreShiftRowView({ row }: { row: PreShiftRow }) {
         </div>
         <div className="flex min-w-0 flex-col gap-2 md:basis-auto">
           <div className="flex flex-wrap items-center gap-2">
-            <Pill tone={reservation.guest.consent === "granted" ? "success" : "muted"}>
-              {t(`common.consent.${reservation.guest.consent ?? "unknown"}`)}
-            </Pill>
+            {(reservation.guest.consent === "granted" || reservation.guest.consent === "denied") && (
+              <Pill tone={reservation.guest.consent === "granted" ? "success" : "muted"}>
+                {t(`common.consent.${reservation.guest.consent}`)}
+              </Pill>
+            )}
             <span data-slot="reconfirmation">
               <ReconfirmationPill value={reservation.reconfirmation} />
             </span>
@@ -221,23 +192,3 @@ export function ReconfirmationPill({ value }: { value: Reconfirmation | undefine
   return <Pill tone={r.tone}>{t(r.labelKey)}</Pill>;
 }
 
-function WaitlistPending({ entries }: { entries: WaitlistEntry[] }) {
-  const t = useT();
-  if (entries.length === 0) return null;
-  return (
-    <section className="space-y-2">
-      <h2 className="px-1 font-display text-lg">{t("preshift.waitlistNow", { count: entries.length })}</h2>
-      <ul className="divide-y overflow-hidden rounded-xl border bg-card text-sm print:rounded-none print:border-x-0">
-        {entries.map((e) => (
-          <li key={e.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
-            <span className="font-medium">{e.guestName || "—"}</span>
-            <span className="text-muted-foreground">
-              {t("common.partyOf", { count: e.partySize })}
-              {e.zone && ` · ${e.zone}`}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}

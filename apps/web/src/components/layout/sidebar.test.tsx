@@ -21,6 +21,7 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: "Floor plan" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: "Agenda" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("button", { name: "Pacing" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pre-shift" })).not.toBeInTheDocument();
   });
 });
 

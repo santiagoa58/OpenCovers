@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArmchairIcon } from "lucide-react";
 import { toast } from "sonner";
+import { DayNav } from "@/components/day-nav";
 import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
 import { canEditSetup, useNavigation } from "@/components/layout/navigation";
@@ -13,6 +14,7 @@ import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
 import { FloorCanvas } from "@/components/floor/floor-canvas";
 import { FloorSkinToggle } from "@/components/floor/floor-skin-toggle";
 import { PacingView } from "@/components/pacing/pacing-view";
+import { PreShiftView } from "@/components/preshift/pre-shift-view";
 import { MoveDialog } from "@/components/floor/move-dialog";
 import { useFloor } from "@/hooks/use-floor";
 import { useFloorItems } from "@/hooks/use-floor-items";
@@ -65,13 +67,7 @@ export function FloorView({ venueId }: { venueId: string }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            type="date"
-            aria-label={t("floor.date")}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-fit"
-          />
+          <DayNav date={date} onChange={setDate} />
           <Input
             type="time"
             aria-label={t("floor.time")}
@@ -147,6 +143,15 @@ export function FloorView({ venueId }: { venueId: string }) {
             const table = tables.find((t) => t.id === tableId);
             if (table?.reservationId) setMoveFrom(table);
           }}
+        />
+      )}
+
+      {data && (
+        <PreShiftView
+          venueId={venueId}
+          date={date}
+          time={time}
+          floorTables={tables}
         />
       )}
 

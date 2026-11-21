@@ -1,5 +1,4 @@
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Reservation } from "@/lib/api";
 import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
@@ -28,7 +27,7 @@ function setup(reservations: Reservation[], waitlist: unknown[] = []) {
     "GET /v1/venues/v1/services": { body: { services: [] } },
     "GET /v1/venues/v1/waitlist": { body: { entries: waitlist } },
   });
-  renderWithApp(<PreShiftView venueId="v1" />);
+  renderWithApp(<PreShiftView venueId="v1" date="2026-11-20" time="20:30" floorTables={[]} />);
 }
 
 describe("PreShiftView", () => {
@@ -37,7 +36,7 @@ describe("PreShiftView", () => {
   it("summarizes the shift and flags large parties and notes", async () => {
     setup([
       reservation({ id: "a", guest: { name: "Ana", consent: "granted" }, commentary: "Nut allergy" }),
-      reservation({ id: "b", time: "21:00", partySize: 8, guest: { name: "Big Group", consent: "unknown" } }),
+      reservation({ id: "b", time: "20:30", partySize: 8, guest: { name: "Big Group", consent: "unknown" } }),
       reservation({ id: "c", status: "cancelled", guest: { name: "Gone", consent: "unknown" } }),
     ]);
     await screen.findByText("Ana");
@@ -56,13 +55,13 @@ describe("PreShiftView", () => {
     expect(screen.getByText("Declined")).toBeInTheDocument();
   });
 
-  it("lists who is on the waitlist now", async () => {
+  it("does not show the live waitlist for an arbitrary selected floor time", async () => {
     setup(
       [reservation()],
-      [{ id: "w1", venueId: "v1", partySize: 3, zone: "Patio", guestName: "Waiting Wes", guestContact: "", status: "waiting", reservationId: null, createdAt: new Date().toISOString() }],
+      [{ id: "w1", venueId: "v1", partySize: 3, zone: "Patio", guestName: "Waiting Wes", status: "waiting" }],
     );
-    expect(await screen.findByText("Waitlist now (1)")).toBeInTheDocument();
-    expect(screen.getByText("Party of 3 · Patio")).toBeInTheDocument();
+    await screen.findByText("Jane Doe");
+    expect(screen.queryByText("Waiting Wes")).not.toBeInTheDocument();
   });
 
   it("says when nobody is expected", async () => {
@@ -70,10 +69,10 @@ describe("PreShiftView", () => {
     expect(await screen.findByText("Nobody expected")).toBeInTheDocument();
   });
 
-  it("can move to the next day", async () => {
+  it("uses the Floor plan's date and time without duplicate controls", async () => {
     setup([reservation()]);
     await screen.findByText("Jane Doe");
-    await userEvent.click(screen.getByRole("button", { name: "Next day" }));
-    expect(await screen.findByRole("button", { name: "Today" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next day" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Service" })).not.toBeInTheDocument();
   });
 });

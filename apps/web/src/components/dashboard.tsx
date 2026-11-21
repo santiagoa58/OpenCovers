@@ -15,7 +15,6 @@ import { FloorView } from "./floor/floor-view";
 import { NavigationProvider, useScrollToSection } from "./layout/navigation";
 import { MobileNav, Sidebar, viewLabel, type ViewId } from "./layout/sidebar";
 import { Topbar } from "./layout/topbar";
-import { PreShiftView } from "./preshift/pre-shift-view";
 import { SetupView } from "./setup/setup-view";
 import { TeamView } from "./team/team-view";
 import { EmptyVenues } from "./venue/empty-venues";
@@ -116,7 +115,6 @@ export function Dashboard() {
             ) : venueId ? (
               <>
                 {active === "agenda" && <AgendaView venueId={venueId} />}
-                {active === "preshift" && <PreShiftView venueId={venueId} />}
                 {active === "floor" && <FloorView venueId={venueId} />}
                 {active === "availability" && <AvailabilityView venueId={venueId} />}
                 {active === "waitlist" && <WaitlistView venueId={venueId} />}

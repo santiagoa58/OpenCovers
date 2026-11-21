@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Reservation, Table } from "@/lib/api";
-import { buildPreShift, totalCovers } from "@/lib/pre-shift";
+import type { FloorTable, Reservation, Table } from "@/lib/api";
+import { buildPreShift, rowsForFloorTime, totalCovers } from "@/lib/pre-shift";
 
 function reservation(overrides: Partial<Reservation>): Reservation {
   return {
@@ -74,6 +74,22 @@ describe("buildPreShift", () => {
       null,
     );
     expect(rows.map((r) => r.tableNames)).toEqual([["Window 1", "t9"], [], []]);
+  });
+
+  it("shows arrivals in the selected 15-minute slot and occupied reservations from earlier", () => {
+    const rows = buildPreShift([
+      reservation({ id: "earlier", time: "19:00" }),
+      reservation({ id: "at-start", time: "20:00" }),
+      reservation({ id: "in-slot", time: "20:10", tables: [] }),
+      reservation({ id: "next-slot", time: "20:15" }),
+      reservation({ id: "later", time: "21:00" }),
+    ], tables, null);
+    const floorTables: FloorTable[] = [{ ...tables[0], occupied: true, reservationId: "earlier" }];
+
+    expect(rowsForFloorTime(rows, "20:08", floorTables).map((r) => r.reservation.id))
+      .toEqual(["earlier", "at-start", "in-slot"]);
+    expect(rowsForFloorTime(rows, "20:15", []).map((r) => r.reservation.id))
+      .toEqual(["next-slot"]);
   });
 
   it("flags large parties and totals covers", () => {
