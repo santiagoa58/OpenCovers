@@ -5,3 +5,6 @@
 .env.*
 !.env.example
 !.env.*.example
+
+# Temporary credentials created by google-github-actions/auth.
+gha-creds-*.json
