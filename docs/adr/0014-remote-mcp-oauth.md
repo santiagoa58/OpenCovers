@@ -283,4 +283,4 @@ A review of part 1 (#92) found this ADR and the code apart in six places. The co
 - **The metadata fetch.** The ADR named the webhook address rules. The plugin's own transport is used, and it is stricter. The ADR was wrong.
 - **Refresh token reuse.** The Tokens section said the grant is revoked with an audit row, the amendment after part 1 said every token of the client for that person is deleted. The Tokens section now says what the plugin does, what part 2 adds, and that the plugin keeps its consent row.
 
-It also adds the `oauth_authorize` rate rule, and refuses `MCP_REMOTE=on` without HTTPS and a real secret, or with demo mode (Shape). Refusing demo mode can be undone: allowing it needs a decision on magic link sign-in and the consent screen.
+It also adds the `oauth_authorize` rate rule and refuses `MCP_REMOTE=on` without HTTPS and a real secret (Shape).

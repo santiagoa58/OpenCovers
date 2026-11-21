@@ -4,7 +4,7 @@
 - Date: 2026-11-20
 - Deciders: David Cabeza
 
-Nothing in this record is built. It proposes how a guest saves a booking in the phone's Wallet and how that pass stays current, so that the contract (`docs/contract/openapi.yaml`, plus a new `docs/contract/wallet.md`), the conformance cases and the code can follow, in that order, once it is accepted. It builds on [ADR-0017](0017-booking-widget-and-self-service-link.md) (the `/r` page and its token) and [ADR-0024](0024-guest-email-language.md) (the guest's language). Open questions for the owner are marked `Q1` to `Q8`.
+Nothing in this record is built. It proposes how a guest saves a booking in the phone's Wallet and how that pass stays current, so that the contract (`docs/contract/openapi.yaml`, plus a new `docs/contract/wallet.md`), the conformance cases and the code can follow, in that order, once it is accepted. It builds on [ADR-0017](0017-booking-widget-and-self-service-link.md) (the `/r` page and its token) and [ADR-0024](0024-guest-email-language.md) (the guest's language). Open questions for the owner are marked `Q1` to `Q7`.
 
 ## Decisions at a glance
 
@@ -16,8 +16,7 @@ Nothing in this record is built. It proposes how a guest saves a booking in the 
 | 4 | Data in the pass | Date, time, party size, venue name, public address and phone, a link. Never a guest name, contact or note. Erasure voids the pass, then deletes its device rows. | Putting the guest's name on the pass. |
 | 5 | Secrets | Instance-level environment variables. Each platform is off when its variables are unset. Per-venue credentials are deferred. | Per-venue Apple or Google accounts now. |
 | 6 | Shape of the code | Inside `apps/api`. A worker reads the event feed with a cursor, as the webhook worker does. `passkit-generator` for `.pkpass`, Node's `http2` for APNs, `google-auth-library` for Google. | A separate service, or an outbox table written by every write path. |
-| 7 | Demo | Off in the hosted demo at launch. | A real certificate shared by every sandbox. |
-| 8 | Staging | Seven stages, contract first. | One pull request. |
+| 7 | Staging | Seven stages, contract first. | One pull request. |
 
 ## Context
 
@@ -28,7 +27,7 @@ What the code and the docs say today, read on `origin/main` at `cb232dd`:
 - A guest booking through the widget gets a self-service link, a token `<linkId>.<secret>` in the URL fragment of `/r`. The database stores only the SHA-256 of the secret (`self_service_links` in `apps/api/src/db/schema.ts`). The link lasts until 48 hours after the booking ends (`LINK_LIFE_MS` in `apps/api/src/lib/self-service.ts`). `GET /public/self-service` takes it in `X-Self-Service-Token`, and every failure is the same `404` `self_service_link_invalid` (`docs/contract/openapi.yaml`, line 2249).
 - A modify cannot change the date or the time (ADR-0017, Context). The statuses are closed: `booked`, `seated`, `attended`, `no_show`, `cancelled`.
 - `reservations.version` is a per-reservation integer, and every write appends an event (`apps/api/src/db/schema.ts`, `events`). `events.id` is a global bigserial. Since [ADR-0026](0026-event-commit-order.md) a venue's events commit in id order, through the lock in `appendEvents` (`apps/api/src/lib/events.ts`). Events carry no guest data, only `type`, `reservationId`, `version`, and the channel and actor (ADR-0023).
-- Webhooks are a cursor over that feed, delivered by a worker with a lease, batches, a timeout and backoff (`apps/api/src/lib/webhooks.ts`: `BATCH_SIZE` 50, `TIMEOUT_MS` 5 s, backoff 30 s to 1 h). The hosted demo and its special webhook restrictions have been retired.
+- Webhooks are a cursor over that feed, delivered by a worker with a lease, batches, a timeout and backoff (`apps/api/src/lib/webhooks.ts`: `BATCH_SIZE` 50, `TIMEOUT_MS` 5 s, backoff 30 s to 1 h).
 - Emails to the guest carry only what the engine wrote and never the guest's name or note (`apps/api/src/lib/mailer.ts`, the comment above `buildEmail`). The same rule is kept here.
 - Erasure blanks name, contact, guest link, consent, rating, note and reconfirmation, deletes the self-service link, writes a tombstone hash and returns `erased` events (`eraseReservations` in `apps/api/src/lib/venue.ts`).
 - A venue's public name, phone and address are already published for JSON-LD (`apps/api/src/lib/public-profile.ts`, `venues.public_phone`).
@@ -168,7 +167,7 @@ No device row outlives its pass. There is no analytics on devices.
 | Platform | Needs | Cost | Held by |
 | --- | --- | --- | --- |
 | Apple | An Apple Developer Program membership, a Pass Type ID and its certificate, and Apple's WWDR intermediate certificate. Apple's page I fetched does not state the price; it has been 99 USD a year, to confirm at developer.apple.com/programs. | Paid | The operator |
-| Google | A Google Pay & Wallet issuer account and a service account key. In demo mode only users with a role on the issuer account, or added test accounts, can add a pass, and passes are labelled "[TEST ONLY]". Production needs a business profile and Google's review of a "publishing access" request ([publishing access](https://developers.google.com/wallet/tickets/events/getting-started/request-publishing-access)). The pages I fetched give no price. | Not stated in the pages read | The operator |
+| Google | A Google Pay & Wallet issuer account and a service account key. The issuer needs a business profile and Google's review of a "publishing access" request ([publishing access](https://developers.google.com/wallet/tickets/events/getting-started/request-publishing-access)). The pages I fetched give no price. | Not stated in the pages read | The operator |
 
 **No credentials exist yet.** This ADR does not assume any. The owner creates them, or does not.
 
@@ -223,10 +222,6 @@ A pass update must not delay or fail a booking, and must be retried. So it runs 
 
 `docs/contract/wallet.md` (new) for the Apple web service and the failure answers. `openapi.yaml` gains the two `POST /public/self-service/wallet/{apple,google}` routes and a `wallet` object in the public booking config saying which platforms are on, so the widget shows only the buttons that work. New conformance cases, GAP in `conformance-status.md` until built: passes only for a booking with a live link; a bad token fails like `self_service_link_invalid`; Apple register, unregister and serials; `401` uniform; cancel voids; erasure voids, stops pushes and deletes registrations; no guest text in a pass. MCP: unchanged, as the self-service routes are not exposed through it.
 
-### The demo (ADR-0022)
-
-**Off in the hosted demo at launch.** A demo cannot ship a certificate per visitor, and a shared one would put the owner's Apple team behind passes for invented bookings, with push tokens of strangers' phones on a demo database we delete after 14 days. The sandbox hides both buttons (the wallet block of the public config reports both platforms off), and `/r` in a demo shows a one-line note that passes need the operator's Apple and Google accounts. This matches how the demo already blocks webhook delivery (`sandboxWebhooksBlocked`). Per `CLAUDE.md` a feature that adds a screen or a setting also goes into `apps/api/src/demo/template.ts`; here the setting is the instance's, not the venue's, so the template needs no change, and stage 7 states so in its description (Q5 offers an alternative).
-
 ### Staging
 
 Each stage is one pull request. A contract stage changes `openapi.yaml`, `conformance.md` and `conformance-status.md` together, with new cases as GAP.
@@ -240,7 +235,6 @@ Each stage is one pull request. A contract stage changes `openapi.yaml`, `confor
 | 4 | Google: class, object, Save link, `PATCH` and `addMessage` from the worker. | 2 | yes, in parallel with 3 |
 | 5 | The `/r` buttons, the consent wording, localization of the pass text (reviewed locales only, ADR-0024 Q3). | 3 or 4 | yes |
 | 6 | Docs: `docs/deploy.md` section on obtaining the credentials, `.env.example`, README note. | 3 | with 5 |
-| 7 | Demo: confirm off, the `/r` note, and the CI check. | 5 | yes |
 
 Real devices are needed for stages 3 to 5 and cannot be tested in CI; the stage descriptions list what was tried by hand.
 
@@ -258,7 +252,7 @@ Real devices are needed for stages 3 to 5 and cannot be tested in CI; the stage 
 - **The self-service token inside the pass.** Rejected: sharing a pass would give away the right to change or cancel a booking, and the update could not rebuild it.
 - **The reservation id as the serial.** Rejected: a pass that leaves the phone would name a booking.
 - **An outbox row from every write path.** Rejected: it changes every write path and the events lock rule; the feed has what we need.
-- **Webhooks as the trigger.** Rejected: webhooks belong to the venue's own endpoints, are blocked in the demo and carry no guest data; the worker reads the feed itself.
+- **Webhooks as the trigger.** Rejected: webhooks belong to the venue's own endpoints, carry no guest data; the worker reads the feed itself.
 - **Per-venue Apple and Google accounts.** Deferred (Q3).
 - **Event ticket class on Google.** Rejected for the reasons in section 3.
 - **A separate pass service.** Rejected: the pass needs the same database, the same erasure transaction and the same feed.
@@ -280,10 +274,9 @@ Real devices are needed for stages 3 to 5 and cannot be tested in CI; the stage 
 - **Q2. Apple and Google together?** Recommend Apple first for the work (the web service and APNs are the hard part), Google right after as its own stage; the contract and `/r` cover both from stage 1. Google needs no cost beyond review.
 - **Q3. Per-venue credentials?** Recommend no. Revisit when a hosted venue asks to be under its own brand on the lock screen.
 - **Q4. Google generic type or event ticket?** Recommend generic. Before stage 4, read Google's generic-pass docs for a time-based reminder on an object; if none exists, Google passes get the cancel and party-size alerts but no reminder.
-- **Q5. Demo behaviour?** Recommend off (section 6). The alternative is a real instance certificate with the pass named "OpenCovers demo", which shows the feature but puts visitors' push tokens and the owner's Apple team into a throwaway stack.
-- **Q6. Name on the pass.** Recommend the venue's name only, no OpenCovers mention, until the platforms' rules are read in full.
-- **Q7. Loyalty card (Stage B), yes or no?** Recommend not now. Decide after Stage A has real use and a lawyer has answered the controller and consent questions in section 1. A loyalty card is a product and a legal project, not a feature of this ADR.
-- **Q8. Staff-issued passes?** Today only a booking with a self-service link can get a pass. Recommend leaving staff bookings out of Stage A, and asking whether a venue wants to send a pass by email for phone bookings. That would need a stored link for staff bookings, which ADR-0017 does not give them.
+- **Q5. Name on the pass.** Recommend the venue's name only, no OpenCovers mention, until the platforms' rules are read in full.
+- **Q6. Loyalty card (Stage B), yes or no?** Recommend not now. Decide after Stage A has real use and a lawyer has answered the controller and consent questions in section 1. A loyalty card is a product and a legal project, not a feature of this ADR.
+- **Q7. Staff-issued passes?** Today only a booking with a self-service link can get a pass. Recommend leaving staff bookings out of Stage A, and asking whether a venue wants to send a pass by email for phone bookings. That would need a stored link for staff bookings, which ADR-0017 does not give them.
 
 ## Evidence and limits
 
