@@ -24,16 +24,17 @@ import { useFloor } from "@/hooks/use-floor";
 import { useFloorItems } from "@/hooks/use-floor-items";
 import { api, type FloorTable } from "@/lib/api";
 import { useT } from "@/i18n";
-import { nowTime, todayIso } from "@/lib/date";
+import { nowTime, todayIso, venueNow } from "@/lib/date";
 import { setUrlParams, useUrlDate, useUrlTime } from "@/lib/url-state";
 import { useTimeDisplay } from "@/lib/time-format";
 
-export function FloorView({ venueId }: { venueId: string }) {
+export function FloorView({ venueId, timezone }: { venueId: string; timezone?: string }) {
   const t = useT();
   const nav = useNavigation();
   const displayTime = useTimeDisplay();
-  const [date, setDate] = useUrlDate();
-  const [time, setTime] = useUrlTime();
+  const clock = timezone ? venueNow(timezone) : { date: todayIso(), time: nowTime() };
+  const [date, setDate] = useUrlDate(clock.date);
+  const [time, setTime] = useUrlTime(clock.time);
   const [bookingTable, setBookingTable] = useState<FloorTable | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [walkInOpen, setWalkInOpen] = useState(false);
@@ -102,7 +103,7 @@ export function FloorView({ venueId }: { venueId: string }) {
               variant="outline"
               className="shrink-0 px-3"
               onClick={() => {
-                setUrlParams({ date: todayIso(), time: nowTime() }, "replace");
+                setUrlParams(timezone ? venueNow(timezone) : { date: todayIso(), time: nowTime() }, "replace");
               }}
             >
               {t("floor.now")}

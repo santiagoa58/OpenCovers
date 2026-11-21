@@ -66,3 +66,17 @@ export function elapsed(iso: string, now: number = Date.now()): string {
   }
   return t("dates.elapsed.days", { count: Math.floor(hours / 24) });
 }
+
+/** Calendar date and clock time in the venue timezone, not the staff device timezone. */
+export function venueNow(timezone: string, instant = new Date()): { date: string; time: string } {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(instant);
+    const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+    return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+  } catch {
+    return { date: toIsoDate(instant), time: `${String(instant.getHours()).padStart(2, "0")}:${String(instant.getMinutes()).padStart(2, "0")}` };
+  }
+}

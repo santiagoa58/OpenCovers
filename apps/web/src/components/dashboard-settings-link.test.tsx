@@ -30,6 +30,8 @@ const venues = (role: string) => ({ venues: [{ id: "v1", name: "La Taberna", tim
 const scroll = vi.fn();
 
 function show(role: string) {
+  // These tests intentionally exercise links from the Agenda empty state.
+  if (!window.location.search) window.history.replaceState(null, "", "/?view=agenda");
   mockApi({
     "GET /v1/venues": { body: venues(role) },
     "GET /v1/venues/v1/tables": { body: { tables: [] } },

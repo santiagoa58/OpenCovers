@@ -30,14 +30,14 @@ export function Dashboard() {
   const setVenue = useUiStore((s) => s.setVenue);
   const viewParam = useUrlParam("view");
   const sectionParam = useUrlParam("section");
-  const views: ViewId[] = ["agenda", "floor", "availability", "waitlist", "setup", "team"];
-  const requestedView = views.find((view) => view === viewParam) ?? (sectionParam ? "setup" : "agenda");
+  const views: ViewId[] = ["floor", "agenda", "availability", "waitlist", "setup", "team"];
+  const requestedView = views.find((view) => view === viewParam) ?? (sectionParam ? "setup" : "floor");
   const [navOpen, setNavOpen] = useState(false);
   const [section, setSection] = useState<string | null>(null);
 
   const venues = data?.venues ?? [];
   const role = venues.find((v) => v.id === venueId)?.role;
-  const active: ViewId = requestedView === "team" && role && role !== "admin" ? "agenda" : requestedView;
+  const active: ViewId = requestedView === "team" && role && role !== "admin" ? "floor" : requestedView;
 
   useEffect(() => {
     if (
@@ -51,13 +51,11 @@ export function Dashboard() {
   const goTo = useCallback((view: ViewId, to?: string) => {
     setSection(to ?? null);
     const target = to ? sectionForTarget(to) : undefined;
-    const changedScreen = view !== active;
     setUrlParams({
       view,
       section: view === "setup" ? (target ?? (changedScreen ? null : sectionParam)) : null,
-      date: changedScreen ? null : undefined,
-      time: changedScreen ? null : undefined,
-      party: changedScreen ? null : undefined,
+      // Keep date, floor snapshot and party filters available on a return visit.
+      // Tab changes are navigable; rapid time selection remains replace-only.
     });
   }, [active, sectionParam]);
   const navigation = useMemo(() => ({ goTo, role }), [goTo, role]);
@@ -120,7 +118,7 @@ export function Dashboard() {
             ) : venueId ? (
               <>
                 {active === "agenda" && <AgendaView venueId={venueId} />}
-                {active === "floor" && <FloorView venueId={venueId} />}
+                {active === "floor" && <FloorView venueId={venueId} timezone={venues.find((v) => v.id === venueId)?.timezone} />}
                 {active === "availability" && <AvailabilityView venueId={venueId} />}
                 {active === "waitlist" && <WaitlistView venueId={venueId} />}
                 {active === "team" && role === "admin" && <TeamView venueId={venueId} />}

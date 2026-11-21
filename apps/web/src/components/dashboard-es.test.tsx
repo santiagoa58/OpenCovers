@@ -12,6 +12,7 @@ vi.mock("@/lib/auth-client", () => ({
   },
 }));
 vi.mock("./agenda/agenda-view", () => ({ AgendaView: () => <p>AgendaView</p> }));
+vi.mock("./floor/floor-view", () => ({ FloorView: () => <p>FloorView</p> }));
 vi.mock("./waitlist/waitlist-view", () => ({ WaitlistView: () => <p>WaitlistView</p> }));
 
 import { Dashboard } from "./dashboard";
@@ -36,7 +37,7 @@ describe("Dashboard in Spanish", () => {
         <Dashboard />
       </ThemeProvider>,
     );
-    await waitFor(() => expect(document.title).toBe("Agenda · La Taberna · OpenCovers"));
+    await waitFor(() => expect(document.title).toBe("Plano de sala · La Taberna · OpenCovers"));
     await user.click(screen.getAllByRole("button", { name: "Lista de espera" })[0]);
     await waitFor(() => expect(document.title).toBe("Lista de espera · La Taberna · OpenCovers"));
     useUiStore.setState({ locale: "en" });

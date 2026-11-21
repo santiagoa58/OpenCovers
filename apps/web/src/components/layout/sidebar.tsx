@@ -30,8 +30,8 @@ const NAV: {
   icon: typeof CalendarDaysIcon;
   adminOnly?: boolean;
 }[] = [
-  { id: "agenda", labelKey: "layout.nav.agenda", icon: CalendarDaysIcon },
   { id: "floor", labelKey: "layout.nav.floor", icon: LayoutGridIcon },
+  { id: "agenda", labelKey: "layout.nav.agenda", icon: CalendarDaysIcon },
   { id: "availability", labelKey: "layout.nav.availability", icon: CalendarClockIcon },
   { id: "waitlist", labelKey: "layout.nav.waitlist", icon: UsersIcon },
   { id: "setup", labelKey: "layout.nav.setup", icon: SettingsIcon },
