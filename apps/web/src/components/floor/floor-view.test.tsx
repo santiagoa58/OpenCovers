@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FloorTable } from "@/lib/api";
 import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
+import { todayIso } from "@/lib/date";
 import { FloorView } from "./floor-view";
 
 function table(overrides: Partial<FloorTable> = {}): FloorTable {
@@ -314,7 +315,7 @@ describe("FloorView", () => {
     expect(replace).toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
     const params = new URLSearchParams(window.location.search);
-    expect(params.get("date")).toBe("2026-11-21");
+    expect(params.get("date")).toBe(todayIso());
     expect(params.get("time")).toMatch(/^([01]\\d|2[0-3]):[0-5]\\d$/);
     expect(screen.getByTestId("floor-selected-time")).toHaveTextContent("Viewing");
   });
