@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarPlusIcon,
   MoreHorizontalIcon,
+  PrinterIcon,
   UsersIcon,
 } from "lucide-react";
 import { cn } from "cn";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { DayNav } from "@/components/day-nav";
+import { PrintReservationsDialog } from "@/components/printing/print-reservations-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { Stat } from "@/components/stat";
 import { StatusBadge } from "./status-badge";
@@ -79,6 +81,7 @@ export function AgendaView({ venueId }: { venueId: string }) {
   const t = useT();
   const [date, setDate] = useUrlDate();
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [editing, setEditing] = useState<Reservation | null>(null);
   const [assigning, setAssigning] = useState<Reservation | null>(null);
   const [cancelling, setCancelling] = useState<Reservation | null>(null);
@@ -135,6 +138,10 @@ export function AgendaView({ venueId }: { venueId: string }) {
         actions={
           <>
             <DayNav date={date} onChange={setDate} />
+            <Button variant="outline" onClick={() => setPrintOpen(true)}>
+              <PrinterIcon className="size-4" />
+              {t("preshift.print")}
+            </Button>
             <Button onClick={() => setWalkInOpen(true)}>{t("agenda.walkIn")}</Button>
           </>
         }
@@ -194,6 +201,9 @@ export function AgendaView({ venueId }: { venueId: string }) {
         </>
       )}
 
+      {printOpen && (
+        <PrintReservationsDialog venueId={venueId} date={date} initialScope="day" onClose={() => setPrintOpen(false)} />
+      )}
       <WalkInDialog venueId={venueId} open={walkInOpen} onOpenChange={setWalkInOpen} />
       <AssignTablesDialog
         venueId={venueId}
