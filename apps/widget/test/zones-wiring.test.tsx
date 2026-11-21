@@ -150,8 +150,10 @@ describe("zones and services beside the times", () => {
       ],
     });
     await time("13:00");
-    const groups = screen.getAllByRole("group").filter((g) => ["Lunch", "Dinner"].includes(g.getAttribute("aria-label") ?? ""));
-    expect(groups.map((g) => g.getAttribute("aria-label"))).toEqual(["Lunch", "Dinner"]);
+    const groups = [
+      screen.getByRole("group", { name: "Lunch" }),
+      screen.getByRole("group", { name: "Dinner" }),
+    ];
     expect(within(groups[0]).getAllByRole("radio")).toHaveLength(2);
     expect(within(groups[1]).getByRole("radio", { name: "20:00" })).toBeTruthy();
     expect(screen.getByText("Dinner")).toBeTruthy();
