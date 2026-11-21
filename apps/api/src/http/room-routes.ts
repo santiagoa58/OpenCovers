@@ -1,13 +1,9 @@
-import { type Context, type Hono, type MiddlewareHandler } from "hono";
+import { type Hono, type MiddlewareHandler } from "hono";
 import { db } from "../db/client";
-import { ERRORS, errorBody, type ErrorCode } from "../lib/errors";
+import { sendError } from "./send-error";
 import { addFloorItem, deleteFloorItem, listFloorItems, updateFloorItemLayout } from "../lib/floor-items";
 import { deleteService, deleteTable, listServices, parseDays, listTables, updateTableLayout, upsertService, upsertTable } from "../lib/catalog";
 import type { AppEnv } from "../app";
-
-function sendError(c: Context<AppEnv>, code: ErrorCode) {
-  return c.json(errorBody(code), ERRORS[code].status);
-}
 
 function isPartyLimit(value: unknown): boolean {
   return value === undefined || value === null || (Number.isInteger(value) && (value as number) >= 1);
