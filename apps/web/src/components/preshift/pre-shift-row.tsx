@@ -4,7 +4,7 @@ import { Pill } from "@/components/pill";
 import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
 import { useT } from "@/i18n";
 import { longDate } from "@/lib/date";
-import { type PreShiftRow } from "@/lib/pre-shift";
+import type { PreShiftRow } from "@/lib/pre-shift";
 import { useTimeDisplay } from "@/lib/time-format";
 import { ReconfirmationPill } from "./reconfirmation-pill";
 
