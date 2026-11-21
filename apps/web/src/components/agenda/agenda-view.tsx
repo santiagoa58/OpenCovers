@@ -39,6 +39,7 @@ import { useUrlDate } from "@/lib/url-state";
 import { errorMessage, isApiError } from "@/lib/error-message";
 import { guestInitials } from "@/lib/format";
 import { useTimeDisplay } from "@/lib/time-format";
+import { parseReservationCommentary } from "@/lib/reservation-commentary";
 
 type RowAction =
   | { kind: "status"; labelKey: MessageKey; status: string }
@@ -259,6 +260,7 @@ function ReservationRow({
   const canEdit = ["booked", "seated", "attended"].includes(reservation.status);
   const canAssign = ["booked", "seated"].includes(reservation.status);
   const tableIds = reservation.tables ?? [];
+  const partyMembers = parseReservationCommentary(reservation.commentary).members;
 
   const finished = reservation.status === "cancelled" || reservation.status === "no_show";
 
@@ -280,9 +282,9 @@ function ReservationRow({
           {reservation.guest.contact && (
             <div className="truncate text-xs text-muted-foreground">{reservation.guest.contact}</div>
           )}
-          {reservation.commentary?.startsWith("Guests: ") && (
-            <div className="line-clamp-2 text-xs leading-snug text-muted-foreground" title={reservation.commentary}>
-              {reservation.commentary.slice("Guests: ".length)}
+          {partyMembers && (
+            <div className="line-clamp-2 text-xs leading-snug text-muted-foreground" title={partyMembers}>
+              {t("reservation.annotation.members")}: {partyMembers}
             </div>
           )}
         </div>

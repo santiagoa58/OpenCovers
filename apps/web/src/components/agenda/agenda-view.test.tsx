@@ -244,8 +244,8 @@ describe("AgendaView actions", () => {
     await openRowMenu(user);
 
     await user.click(await screen.findByRole("menuitem", { name: "Edit reservation" }));
-    await user.clear(await screen.findByLabelText("Note"));
-    await user.type(screen.getByLabelText("Note"), "Quiet table");
+    await user.clear(await screen.findByLabelText("Staff note"));
+    await user.type(screen.getByLabelText("Staff note"), "Quiet table");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(api.writes()).toHaveLength(1));

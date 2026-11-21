@@ -24,8 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConsentSelect } from "@/components/reservation/consent-select";
+import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX, type Consent, type Reservation } from "@/lib/api";
+import { formatReservationCommentary, parseReservationCommentary } from "@/lib/reservation-commentary";
 
 interface EditValues {
   name: string;
@@ -47,7 +49,7 @@ function toValues(reservation: Reservation | null): EditValues {
     partySize: reservation?.partySize ?? 1,
     consent: reservation?.guest.consent ?? "unknown",
     rating: reservation?.rating ? String(reservation.rating) : NO_RATING,
-    commentary: reservation?.commentary ?? "",
+    commentary: parseReservationCommentary(reservation?.commentary).note ?? "",
   };
 }
 
@@ -62,6 +64,8 @@ export function EditReservationDialog({
 }) {
   const t = useT();
   const queryClient = useQueryClient();
+  const bookingDetails = formatReservationCommentary(reservation?.commentary, "");
+  const staffNoteMax = Math.max(0, COMMENTARY_MAX - (bookingDetails ? bookingDetails.length + "\nStaff note: ".length : 0));
   const {
     handleSubmit,
     reset,
@@ -83,7 +87,7 @@ export function EditReservationDialog({
         partySize: values.partySize,
         guest: { name: values.name.trim(), consent: values.consent },
         rating: values.rating === NO_RATING ? null : Number(values.rating),
-        commentary: values.commentary.trim(),
+        commentary: formatReservationCommentary(reservation.commentary, values.commentary),
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["agenda", venueId] }),
@@ -174,15 +178,16 @@ export function EditReservationDialog({
           </div>
 
           <div className="space-y-2">
+            <ReservationAnnotations commentary={reservation?.commentary} includeStaffNotes={false} />
             <Label htmlFor="edit-commentary">{t("reservation.note")}</Label>
             <Textarea
               id="edit-commentary"
-              maxLength={COMMENTARY_MAX}
+              maxLength={staffNoteMax}
               placeholder={t("reservation.notePlaceholder")}
               {...register("commentary")}
             />
             <p className="text-sm text-muted-foreground">
-              {t("reservation.noteHint", { max: COMMENTARY_MAX })}
+              {t("reservation.noteHint", { max: staffNoteMax })}
             </p>
           </div>
 

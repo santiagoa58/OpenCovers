@@ -29,7 +29,7 @@ describe("AvailabilityView in Spanish", () => {
     expect(screen.getByRole("heading", { name: "Disponibilidad" })).toBeInTheDocument();
     expect(screen.getByText(/Elige una hora libre para reservar mesa para 2 comensales\./)).toBeInTheDocument();
     expect(screen.getByText(longDate(todayIso()))).toBeInTheDocument();
-    expect(screen.getByText("1 de 2 libres")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2 mesas disponibles")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Más comensales" })).toBeInTheDocument();
 
     expect(screen.queryByRole("heading", { name: "Availability" })).not.toBeInTheDocument();

@@ -43,10 +43,10 @@ describe("EditReservationDialog", () => {
     setup();
 
     expect(screen.getByText("Update the details recorded for Jane Doe.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Note")).toHaveValue("Window seat");
-    expect(screen.getByLabelText("Note")).toHaveAttribute("maxlength", "500");
+    expect(screen.getByLabelText("Staff note")).toHaveValue("Window seat");
+    expect(screen.getByLabelText("Staff note")).toHaveAttribute("maxlength", "500");
     expect(
-      screen.getByText("Up to 500 characters. Do not enter health data such as allergies."),
+      screen.getByText("Optional instructions for staff, up to 500 characters. Do not include sensitive personal or health information."),
     ).toBeInTheDocument();
   });
 
@@ -79,8 +79,8 @@ describe("EditReservationDialog", () => {
   it("sends the edited note trimmed and the other values unchanged", async () => {
     const { api, user } = setup();
 
-    await user.clear(screen.getByLabelText("Note"));
-    await user.type(screen.getByLabelText("Note"), "  Birthday  ");
+    await user.clear(screen.getByLabelText("Staff note"));
+    await user.type(screen.getByLabelText("Staff note"), "  Birthday  ");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(api.writes()).toHaveLength(1));
@@ -92,6 +92,25 @@ describe("EditReservationDialog", () => {
       rating: 4,
       commentary: "Birthday",
     });
+  });
+
+  it("edits staff notes without losing an imported sheet reference", async () => {
+    const api = mockApi({ [MODIFY]: { body: RESERVATION } });
+    renderWithApp(
+      <EditReservationDialog
+        venueId="v1"
+        reservation={{ ...RESERVATION, commentary: "Original sheet reference: #302" }}
+        onOpenChange={() => {}}
+      />,
+    );
+    const user = userEvent.setup();
+    expect(screen.getByText(/Original sheet reference:/).parentElement).toHaveTextContent("#302");
+    expect(screen.getByLabelText("Staff note")).toHaveValue("");
+    await user.type(screen.getByLabelText("Staff note"), "Quiet table");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.writes()).toHaveLength(1));
+    expect((api.writes()[0].body as { commentary: string }).commentary)
+      .toBe("Original sheet reference: #302\nStaff note: Quiet table");
   });
 
   it("sends a numeric rating and clears it with null", async () => {
@@ -114,10 +133,10 @@ describe("EditReservationDialog", () => {
   it("stops the note at 500 characters", async () => {
     const { user } = setup();
 
-    await user.clear(screen.getByLabelText("Note"));
-    await user.type(screen.getByLabelText("Note"), "x".repeat(520));
+    await user.clear(screen.getByLabelText("Staff note"));
+    await user.type(screen.getByLabelText("Staff note"), "x".repeat(520));
 
-    expect(screen.getByLabelText("Note")).toHaveValue("x".repeat(500));
+    expect(screen.getByLabelText("Staff note")).toHaveValue("x".repeat(500));
   });
 
   it("lets staff correct the guest label and party size", async () => {

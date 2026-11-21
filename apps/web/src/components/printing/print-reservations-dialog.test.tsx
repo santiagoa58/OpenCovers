@@ -69,7 +69,7 @@ describe("PrintReservationsDialog", () => {
     await user.click(screen.getByRole("radio", { name: "Full day" }));
     await user.click(screen.getByRole("checkbox", { name: "Include cancelled and no-show reservations" }));
     expect(printable()).toHaveTextContent("Cancelled Guest");
-    await user.click(screen.getByRole("checkbox", { name: "Include guest notes" }));
+    await user.click(screen.getByRole("checkbox", { name: "Include staff notes" }));
     expect(printable()).not.toHaveTextContent("Peanut allergy");
 
     const print = vi.fn();

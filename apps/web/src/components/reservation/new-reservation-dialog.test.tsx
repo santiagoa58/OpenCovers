@@ -54,7 +54,7 @@ describe("NewReservationDialog", () => {
     await user.type(screen.getByLabelText("Party size"), "3");
     await user.type(screen.getByLabelText("Guest name"), "Jane Doe");
     await user.type(screen.getByLabelText("Contact"), "jane@example.com");
-    await user.type(screen.getByLabelText("Note"), "Anniversary");
+    await user.type(screen.getByLabelText("Staff note"), "Anniversary");
     await submit(user);
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -98,12 +98,12 @@ describe("NewReservationDialog", () => {
 
   it("limits the note to 500 characters and warns about health data", async () => {
     const { user } = setup();
-    expect(await screen.findByLabelText("Note")).toHaveAttribute("maxlength", "500");
+    expect(await screen.findByLabelText("Staff note")).toHaveAttribute("maxlength", "500");
     expect(
-      screen.getByText("Up to 500 characters. Do not enter health data such as allergies."),
+      screen.getByText("Optional instructions for staff, up to 500 characters. Do not include sensitive personal or health information."),
     ).toBeInTheDocument();
-    await user.type(screen.getByLabelText("Note"), "x".repeat(520));
-    expect((screen.getByLabelText("Note") as HTMLTextAreaElement).value).toHaveLength(500);
+    await user.type(screen.getByLabelText("Staff note"), "x".repeat(520));
+    expect((screen.getByLabelText("Staff note") as HTMLTextAreaElement).value).toHaveLength(500);
   });
 
   it("shows reserved tables and disables them for the whole seating interval", async () => {

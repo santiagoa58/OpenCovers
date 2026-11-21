@@ -45,9 +45,20 @@ describe("PreShiftView", () => {
     expect(screen.getByText("Reservations").nextElementSibling).toHaveTextContent("2");
     expect(screen.getByText("Covers").nextElementSibling).toHaveTextContent("10");
     expect(screen.getByText("Large parties (6+)").nextElementSibling).toHaveTextContent("1");
-    expect(screen.getByText("With notes").nextElementSibling).toHaveTextContent("1");
+    expect(screen.getByText("Staff notes").nextElementSibling).toHaveTextContent("1");
     expect(screen.getByText("8 large")).toBeInTheDocument();
     expect(screen.getByText("Nut allergy")).toBeInTheDocument();
+  });
+
+  it("shows source references and party rosters without counting them as staff notes", async () => {
+    setup([
+      reservation({ id: "ref", guest: { name: "Marilyn" }, commentary: "Ref #302 · 5 guests" }),
+      reservation({ id: "party", guest: { name: "Kahn / Byers" }, commentary: "Guests: Denise Kahn (#301); Alice Byers (#309)." }),
+    ]);
+    await screen.findByText("Marilyn");
+    expect(screen.getByText("Staff notes").nextElementSibling).toHaveTextContent("0");
+    expect(screen.getByText(/Original sheet reference:/).parentElement).toHaveTextContent("#302");
+    expect(screen.getByText(/Party members:/).parentElement).toHaveTextContent("Denise Kahn");
   });
 
   it("marks a booking without tables as unassigned and shows the reconfirmation state", async () => {
