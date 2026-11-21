@@ -9,3 +9,5 @@ steps:
 images:
   - '${_API_IMAGE}'
   - '${_WEB_IMAGE}'
+options:
+  logging: CLOUD_LOGGING_ONLY
