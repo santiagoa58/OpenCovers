@@ -1,6 +1,6 @@
 import { errorMessage } from "@/lib/error-message";
 import { useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,13 @@ export function NewReservationDialog({
   });
 
   const watchedPartySize = Number(watch("partySize")) || 0;
+  const tableAvailability = useQuery({
+    queryKey: ["table-availability", venueId, date, time, watchedPartySize],
+    queryFn: () => api.getTableAvailability(venueId, date, time, watchedPartySize),
+    enabled: open && Boolean(date && time) && watchedPartySize > 0,
+  });
+  const statuses = new Map((tableAvailability.data?.tables ?? []).map((table) => [table.id, table]));
+  const unavailableSelected = selected.some((id) => statuses.get(id)?.available === false);
 
   const totalSeats = useMemo(
     () =>
@@ -83,6 +90,10 @@ export function NewReservationDialog({
   }
 
   async function onSubmit(values: FormValues) {
+    if (tableAvailability.isPending || tableAvailability.isError || unavailableSelected) {
+      toast.error(t("reservation.tableAvailability.refresh"));
+      return;
+    }
     if (selected.length === 0) {
       toast.error(t("reservation.selectTable"));
       return;
@@ -105,6 +116,8 @@ export function NewReservationDialog({
       });
       await queryClient.invalidateQueries({ queryKey: ["agenda", venueId] });
       await queryClient.invalidateQueries({ queryKey: ["availability", venueId] });
+      await queryClient.invalidateQueries({ queryKey: ["table-availability", venueId] });
+      await queryClient.invalidateQueries({ queryKey: ["floor", venueId] });
       toast.success(t("reservation.new.done"));
       onOpenChange(false);
     } catch (err) {
@@ -142,24 +155,51 @@ export function NewReservationDialog({
 
           <div className="space-y-2">
             <Label>{t("reservation.tables")}</Label>
+            <p className="text-xs text-muted-foreground">
+              {t("reservation.tableAvailability.subtitle")}
+            </p>
+            {tableAvailability.isPending && (
+              <p className="text-xs text-muted-foreground">{t("reservation.tableAvailability.checking")}</p>
+            )}
+            {tableAvailability.isError && (
+              <p role="alert" className="text-xs text-destructive">{t("reservation.tableAvailability.failed")}</p>
+            )}
             {tables.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t("reservation.noTables")}
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {tables.map((tbl) => (
-                  <Button
-                    key={tbl.id}
-                    type="button"
-                    variant={selected.includes(tbl.id) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleTable(tbl.id)}
-                  >
-                    {tbl.name} · {tbl.seats}
-                  </Button>
-                ))}
+                {tables.map((tbl) => {
+                  const status = statuses.get(tbl.id);
+                  const booked = status?.available === false;
+                  return (
+                    <Button
+                      key={tbl.id}
+                      type="button"
+                      variant={selected.includes(tbl.id) ? "default" : "outline"}
+                      size="sm"
+                      disabled={booked || tableAvailability.isPending || tableAvailability.isError}
+                      aria-label={`${tbl.name} · ${tbl.seats} · ${booked ? t("reservation.tableAvailability.booked") : t("reservation.tableAvailability.free")}`}
+                      title={booked && status?.reservedUntil
+                        ? t("reservation.tableAvailability.until", { time: status.reservedUntil })
+                        : undefined}
+                      onClick={() => toggleTable(tbl.id)}
+                      className={booked ? "opacity-60" : ""}
+                    >
+                      {tbl.name} · {tbl.seats}
+                      <span className="ml-1 text-[10px]">
+                        {booked
+                          ? t("reservation.tableAvailability.booked")
+                          : tableAvailability.isPending ? "…" : t("reservation.tableAvailability.free")}
+                      </span>
+                    </Button>
+                  );
+                })}
               </div>
+            )}
+            {unavailableSelected && (
+              <p role="alert" className="text-xs text-destructive">{t("reservation.tableAvailability.refresh")}</p>
             )}
             <p
               className={
