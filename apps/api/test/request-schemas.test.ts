@@ -1,10 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { floorItemSchema, serviceSchema, tableLayoutSchema, tableSchema } from "../src/http/room-schemas";
 import { venueConfigSchema, webhookCreateSchema } from "../src/http/venue-settings-schemas";
+import { staffReservationSchema, staffWalkInSchema, staffModifySchema, staffStatusSchema, staffWaitlistSchema } from "../src/http/staff-reservation-schemas";
 import { parseDays } from "../src/lib/catalog";
 import { parseTurnTimes } from "../src/lib/turn-times";
 
 describe("request schemas", () => {
+  it("rejects malformed or unexpected staff reservation fields instead of silently dropping them", () => {
+    const valid = { date: "2026-11-22", time: "19:00", partySize: 2 };
+    expect(staffReservationSchema.safeParse(valid).success).toBe(true);
+    expect(staffReservationSchema.safeParse({ ...valid, tables: ["1"], guest: { name: "Ana", consent: "granted" } }).success).toBe(true);
+    for (const body of [
+      null,
+      {},
+      { ...valid, partySize: "2" },
+      { ...valid, tables: "1" },
+      { ...valid, guest: null },
+      { ...valid, guest: { name: "Ana", consent: null } },
+      { ...valid, guest: { name: "Ana", extra: "ignored before" } },
+      { ...valid, zone: 5 },
+      { ...valid, unknownField: true },
+    ]) {
+      expect(staffReservationSchema.safeParse(body).success, JSON.stringify(body)).toBe(false);
+    }
+    expect(staffWalkInSchema.safeParse({ partySize: 2, tables: ["2"] }).success).toBe(true);
+    expect(staffWalkInSchema.safeParse({ partySize: 2, tables: "2" }).success).toBe(false);
+    expect(staffWaitlistSchema.safeParse({ partySize: 2, guest: { name: "Ana" } }).success).toBe(true);
+    expect(staffWaitlistSchema.safeParse({ partySize: 2, guest: { name: null } }).success).toBe(false);
+    expect(staffModifySchema.safeParse({ tables: ["1"], guest: { name: "Ana" } }).success).toBe(true);
+    expect(staffModifySchema.safeParse({ tables: "1" }).success).toBe(false);
+    expect(staffStatusSchema.safeParse({ status: "seated" }).success).toBe(true);
+    expect(staffStatusSchema.safeParse({ status: null }).success).toBe(false);
+  });
+
   it("checks table and layout input without coercing malformed values", () => {
     expect(tableSchema.safeParse({ id: "1", name: "T1", seats: 2 }).success).toBe(true);
     expect(tableSchema.safeParse({ id: "1", name: "T1", seats: "2" }).success).toBe(false);
