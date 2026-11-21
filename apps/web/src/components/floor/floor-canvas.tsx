@@ -235,6 +235,7 @@ export function FloorCanvas({
   const scale = heldScale ?? (zoom === "fit" ? fit : 1);
   const scaled = scale < 1;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Canvas overflow must be remeasured after geometry or zoom changes; updateMore reads live DOM dimensions.
   useEffect(updateMore, [frameWidth, naturalWidth, scale]);
 
   return (
