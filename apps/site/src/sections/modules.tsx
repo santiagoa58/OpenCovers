@@ -33,7 +33,7 @@ export function Modules() {
       },
       { rootMargin: "-45% 0px -45% 0px" },
     );
-    items.forEach((i) => io.observe(i));
+    items.forEach((item) => { io.observe(item); });
     return () => io.disconnect();
   }, []);
 
