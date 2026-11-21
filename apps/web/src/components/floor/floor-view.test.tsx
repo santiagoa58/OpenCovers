@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import type { FloorTable } from "@/lib/api";
+import { shiftIso, todayIso } from "@/lib/date";
 import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
 import { FloorView } from "./floor-view";
 
@@ -58,6 +59,27 @@ describe("FloorView", () => {
     expect(await screen.findByText("4 guests at tables")).toBeInTheDocument();
     expect(screen.getByText("Free").nextElementSibling).toHaveTextContent("2");
     expect(screen.getByText("Occupied").nextElementSibling).toHaveTextContent("1");
+  });
+
+  it("uses the same previous / date picker / next navigation as other daily views", async () => {
+    const user = setup([table()]);
+    const date = screen.getByLabelText("Date");
+    const today = todayIso();
+
+    expect(date).toHaveValue(today);
+    await user.click(screen.getByRole("button", { name: "Previous day" }));
+    expect(date).toHaveValue(shiftIso(today, -1));
+    expect(screen.getByRole("button", { name: "Today" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Next day" }));
+    expect(date).toHaveValue(today);
+    await user.click(screen.getByRole("button", { name: "Next day" }));
+    expect(date).toHaveValue(shiftIso(today, 1));
+
+    fireEvent.change(date, { target: { value: "2026-11-21" } });
+    expect(date).toHaveValue("2026-11-21");
+    await user.click(screen.getByRole("button", { name: "Today" }));
+    expect(date).toHaveValue(today);
   });
 
   it("clicking a busy timeline slot selects that time on the floor", async () => {
