@@ -343,6 +343,8 @@ describe("C43 public create and attribution", () => {
       { zone: "terrace" },
       { rating: 5 },
       { reconfirmation: "confirmed" },
+      { timee: "21:00" },
+      { guest: { name: "Ana", contact: newContact(), extra: true } },
       { guest: { name: "Ana", contact: "not a contact" } },
       { guest: { name: "   ", contact: newContact() } },
       { guest: { name: "x".repeat(101), contact: newContact() } },
