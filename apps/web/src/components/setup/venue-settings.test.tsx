@@ -170,4 +170,18 @@ describe("VenueSettings overbooking ceiling", () => {
 
     expect(await ceilingInput()).toBeDisabled();
   });
+  it("allows changing the displayed reservation length without editing existing bookings", async () => {
+    const user = userEvent.setup();
+    const puts = mockApi(() => json(CONFIG));
+    renderSettings("admin");
+    const input = await screen.findByLabelText("Reservation length (minutes)");
+    expect(input).toHaveValue(90);
+    expect(screen.getByText(/Existing reservations keep their original duration/)).toBeInTheDocument();
+    await user.clear(input);
+    await user.type(input, "105");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    await waitFor(() => expect(puts).toHaveLength(1));
+    expect(puts[0]).toMatchObject({ turnTimes: [{ upTo: 1000, minutes: 105 }] });
+  });
+
 });

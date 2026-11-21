@@ -24,7 +24,7 @@ describe("planning conflicts", () => {
   });
   it("respects precise boundary turns, party-specific durations, and nonadjacent overlaps", () => {
     const reservations = [booking("A", "17:00", "1"), booking("B", "17:30", "1"), booking("C", "18:00", "1"), booking("D", "18:30", "1")];
-    expect(planningConflicts(reservations, [table("1")], ninety)).toHaveLength(6);
+    expect(planningConflicts(reservations, [table("1")], ninety)).toHaveLength(5);
     expect(bookingMinutes([{ upTo: 2, minutes: 75 }, { upTo: 10, minutes: 120 }], 8)).toBe(120);
     expect(planningConflicts([booking("A", "17:00", "1"), booking("B", "18:30", "1")], [table("1")], ninety)).toHaveLength(0);
   });

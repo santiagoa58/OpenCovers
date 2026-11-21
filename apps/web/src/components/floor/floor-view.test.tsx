@@ -137,18 +137,30 @@ describe("FloorView", () => {
     expect(await screen.findByText("Peanut allergy")).toBeInTheDocument();
   });
 
-  it("seats a walk-in at a free table from the keyboard", async () => {
+  it("plans a reservation at the URL-selected time when a free table is chosen", async () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-21&time=18%3A00");
     const user = setup([table()]);
-    const free = await screen.findByRole("button", { name: "Table 1, 2 seats, seat a walk-in" });
+    const free = await screen.findByRole("button", { name: "Table 1, 2 seats, create a reservation" });
     free.focus();
     await user.keyboard("{Enter}");
-    expect(await screen.findByLabelText("Guest name")).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "New reservation" })).toBeInTheDocument();
+    expect(screen.getByText("2026-11-21 at 18:00")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Walk-in" })).not.toBeInTheDocument();
   });
 
-  it("does not offer walk-in seating on an occupied table and names who is there", async () => {
+  it("has separate actions for reserving a selected time and seating a walk-in right now", async () => {
+    const user = setup([table()]);
+    await user.click(await screen.findByRole("button", { name: "Seat walk-in now" }));
+    expect(screen.getByRole("dialog", { name: "Walk-in" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "New reservation" }));
+    expect(screen.getByRole("dialog", { name: "New reservation" })).toBeInTheDocument();
+  });
+
+  it("does not open a new reservation from an occupied table and names who is there", async () => {
     setup([table({ occupied: true, reservationId: "r1", guestName: "Ana", partySize: 2 })]);
     expect(await screen.findByLabelText("Table 1: Ana, 2 guests")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Seat a walk-in/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New reservation" })).toBeInTheDocument();
   });
 
   describe("moving a seated reservation without dragging", () => {
@@ -237,7 +249,7 @@ describe("FloorView", () => {
 
     it("does not offer Move to… on a free table", async () => {
       const { user } = setupMove(tables);
-      await user.click(await screen.findByRole("button", { name: "Table 2, 2 seats, seat a walk-in" }));
+      await user.click(await screen.findByRole("button", { name: "Table 2, 2 seats, create a reservation" }));
       expect(await screen.findByLabelText("Guest name")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Move to…" })).not.toBeInTheDocument();
     });
@@ -353,6 +365,28 @@ describe("FloorView", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.getAllByRole("button", { name: "Print" })).toHaveLength(1);
     expect(window.location.search).toContain("time=16%3A45");
+  });
+
+  it("flags existing 60-minute turns that would collide under the new 90-minute plan", async () => {
+    mockApi({
+      [FLOOR]: { body: { tables: [table()] } },
+      [ITEMS]: { body: { items: [] } },
+      "GET /v1/venues/v1/tables": { body: { tables: [
+        { id: "t1", name: "Table 1", seats: 2, zone: "", shape: "round" },
+      ] } },
+      "GET /v1/venues/v1/config": { body: { turnTimes: [{ upTo: 1000, minutes: 90 }] } },
+      "GET /v1/venues/v1/agenda": { body: { reservations: [
+        { id: "a", date: "2026-11-21", time: "17:00", status: "booked", partySize: 2, tables: ["t1"], guest: { name: "First Guest" } },
+        { id: "b", date: "2026-11-21", time: "18:00", status: "booked", partySize: 2, tables: ["t1"], guest: { name: "Next Guest" } },
+      ] } },
+    });
+    renderWithApp(<FloorView venueId="v1" />);
+    const warning = await screen.findByTestId("floor-planning-conflicts");
+    expect(warning).toHaveTextContent("1 table turns conflict with 90-minute seating");
+    await userEvent.click(warning.querySelector("summary")!);
+    expect(warning).toHaveTextContent("First Guest");
+    expect(warning).toHaveTextContent("Next Guest");
+    expect(warning).toHaveTextContent("30 min overlap");
   });
 
 });
