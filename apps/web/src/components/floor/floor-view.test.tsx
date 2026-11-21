@@ -350,7 +350,8 @@ describe("FloorView", () => {
     await user.click(screen.getByRole("radio", { name: "Full day" }));
     expect(sheet).toHaveTextContent("Earlier Guest");
     expect(sheet).toHaveTextContent("Later Guest");
-    expect(screen.queryAllByRole("button", { name: "Print" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getAllByRole("button", { name: "Print" })).toHaveLength(1);
     expect(window.location.search).toContain("time=16%3A45");
   });
 
