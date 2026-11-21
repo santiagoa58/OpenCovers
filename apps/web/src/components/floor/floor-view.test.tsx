@@ -241,4 +241,13 @@ describe("FloorView", () => {
     setup([]);
     expect(await screen.findByText("No tables yet")).toBeInTheDocument();
   });
+  it("restores the selected day and booking-load time from a shared URL", async () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-20&time=16%3A45");
+    setup([table()]);
+    expect(await screen.findByTestId("floor-slot-16:45")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-11-20");
+    expect(screen.getByRole("combobox", { name: "Time hour" })).toHaveValue("16");
+    expect(screen.getByRole("combobox", { name: "Time minute" })).toHaveValue("45");
+  });
+
 });

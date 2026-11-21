@@ -119,4 +119,14 @@ describe("AvailabilityView", () => {
     renderWithApp(<AvailabilityView venueId="v1" />);
     expect(await screen.findByText("No services configured")).toBeInTheDocument();
   });
+  it("restores party size and date from the address and writes new selections there", async () => {
+    window.history.replaceState(null, "", "/?view=availability&date=2026-11-20&party=4");
+    const { user } = setup();
+    expect(await screen.findByRole("heading", { name: "dinner" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Party size" })).toHaveValue(4);
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-11-20");
+    await user.click(screen.getByRole("button", { name: "More guests" }));
+    expect(new URLSearchParams(window.location.search).get("party")).toBe("5");
+  });
+
 });

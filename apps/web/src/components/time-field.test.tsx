@@ -33,10 +33,14 @@ describe("TimeField", () => {
 
   it("represents midnight and noon correctly", () => {
     useUiStore.setState({ locale: "en", timeFormat: "12h" });
-    const { rerender } = renderWithApp(<TimeField label="Time" value="00:15" onChange={() => {}} />);
+    function MidnightNoon() {
+      const [value, setValue] = useState("00:15");
+      return <><TimeField label="Time" value={value} onChange={setValue} /><button onClick={() => setValue("12:15")}>Set noon</button></>;
+    }
+    renderWithApp(<MidnightNoon />);
     expect(screen.getByRole("combobox", { name: "Time hour" })).toHaveValue("12");
     expect(screen.getByRole("combobox", { name: "Time AM or PM" })).toHaveValue("AM");
-    rerender(<TimeField label="Time" value="12:15" onChange={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Set noon" }));
     expect(screen.getByRole("combobox", { name: "Time hour" })).toHaveValue("12");
     expect(screen.getByRole("combobox", { name: "Time AM or PM" })).toHaveValue("PM");
   });
