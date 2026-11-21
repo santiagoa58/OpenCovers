@@ -220,7 +220,6 @@ const INPUT_FIELDS = new Set([
   ...BOOLEAN_FIELDS,
   ...INT_FIELDS.map(([name]) => name),
   "allowedOrigins", "services", "weekdays", "confirmationMode", "locale", "theme", "privacyNoticeUrl", "publicZones",
-  "bookingKey", // Read-only legacy property: allow it alongside updates but never persist it.
 ]);
 
 /** Parses a request body. Returns null when invalid. Absent fields remain absent; null resets nullable settings. */
