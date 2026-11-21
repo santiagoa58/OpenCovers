@@ -1,7 +1,7 @@
 import { errorMessage } from "@/lib/error-message";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArmchairIcon, PrinterIcon } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArmchairIcon, PlusIcon, PrinterIcon, UserRoundCheckIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DayNav } from "@/components/day-nav";
 import { EmptyState } from "@/components/empty-state";
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { TimeField } from "@/components/time-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
+import { NewReservationDialog } from "@/components/reservation/new-reservation-dialog";
+import { PlanningConflictsBanner } from "@/components/floor/planning-conflicts-banner";
 import { FloorCanvas } from "@/components/floor/floor-canvas";
 import { FloorSkinToggle } from "@/components/floor/floor-skin-toggle";
 import { PacingView } from "@/components/pacing/pacing-view";
@@ -22,24 +24,35 @@ import { useFloor } from "@/hooks/use-floor";
 import { useFloorItems } from "@/hooks/use-floor-items";
 import { api, type FloorTable } from "@/lib/api";
 import { useT } from "@/i18n";
-import { nowTime, todayIso } from "@/lib/date";
+import { nowTime, todayIso, venueNow } from "@/lib/date";
 import { setUrlParams, useUrlDate, useUrlTime } from "@/lib/url-state";
 import { useTimeDisplay } from "@/lib/time-format";
 
-export function FloorView({ venueId }: { venueId: string }) {
+export function FloorView({ venueId, timezone }: { venueId: string; timezone?: string }) {
   const t = useT();
   const nav = useNavigation();
   const displayTime = useTimeDisplay();
-  const [date, setDate] = useUrlDate();
-  const [time, setTime] = useUrlTime();
-  const [seatTable, setSeatTable] = useState<FloorTable | null>(null);
+  const clock = timezone ? venueNow(timezone) : { date: todayIso(), time: nowTime() };
+  const [date, setDate] = useUrlDate(clock.date);
+  const [time, setTime] = useUrlTime(clock.time);
+  const [bookingTable, setBookingTable] = useState<FloorTable | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [walkInOpen, setWalkInOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [moveFrom, setMoveFrom] = useState<FloorTable | null>(null);
   const queryClient = useQueryClient();
   const { data, isPending, isError, error, isRefetching, refetch } = useFloor(venueId, date, time);
   const { data: itemsData } = useFloorItems(venueId);
+  // Snapshot occupancy and availability over the entire booking duration are different.
+  const bookingAvailability = useQuery({
+    queryKey: ["table-availability", venueId, date, time, 1],
+    queryFn: () => api.getTableAvailability(venueId, date, time, 1),
+  });
 
   const tables = data?.tables ?? [];
+  const bookability = new Map((bookingAvailability.data?.tables ?? []).map((table) => [table.id, table.available]));
+  const bookingTables = tables.map((table) => ({ ...table, bookable: bookability.get(table.id) }));
+  const bookableCount = bookingAvailability.data ? bookingTables.filter((table) => table.bookable).length : null;
   const items = itemsData?.items ?? [];
 
   const occupied = tables.filter((t) => t.occupied).length;
@@ -66,10 +79,20 @@ export function FloorView({ venueId }: { venueId: string }) {
           title={t("floor.title")}
           description={t("floor.intro")}
           actions={
-            <Button variant="outline" onClick={() => setPrintOpen(true)}>
-              <PrinterIcon className="size-4" />
-              {t("preshift.print")}
-            </Button>
+            <>
+              <Button onClick={() => { setBookingTable(null); setBookingOpen(true); }}>
+                <PlusIcon className="size-4" />
+                {t("floor.plan.addReservation")}
+              </Button>
+              <Button variant="outline" onClick={() => setWalkInOpen(true)}>
+                <UserRoundCheckIcon className="size-4" />
+                {t("floor.plan.walkInNow")}
+              </Button>
+              <Button variant="outline" onClick={() => setPrintOpen(true)}>
+                <PrinterIcon className="size-4" />
+                {t("preshift.print")}
+              </Button>
+            </>
           }
         />
         <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" data-testid="floor-filter-bar">
@@ -80,13 +103,17 @@ export function FloorView({ venueId }: { venueId: string }) {
               variant="outline"
               className="shrink-0 px-3"
               onClick={() => {
-                setUrlParams({ date: todayIso(), time: nowTime() }, "replace");
+                setUrlParams(timezone ? venueNow(timezone) : { date: todayIso(), time: nowTime() }, "replace");
               }}
             >
               {t("floor.now")}
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="print:hidden">
+        <PlanningConflictsBanner venueId={venueId} date={date} />
       </div>
 
       <div data-testid="floor-pacing" className="print:hidden">
@@ -116,6 +143,12 @@ export function FloorView({ venueId }: { venueId: string }) {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-sm">
             <Legend tone="free" label={t("floor.free")} value={free} />
             <Legend tone="occupied" label={t("floor.occupied")} value={occupied} />
+            {bookableCount !== null && (
+              <span className="font-medium tabular-nums">{t("floor.planning.bookable", { count: bookableCount })}</span>
+            )}
+            {bookingAvailability.isError && (
+              <span role="status" className="text-destructive">{t("floor.planning.availabilityError")}</span>
+            )}
             <span className="text-muted-foreground tabular-nums">{t("floor.seatedCovers", { count: seatedCovers })}</span>
           </div>
         )}
@@ -139,13 +172,16 @@ export function FloorView({ venueId }: { venueId: string }) {
           />
         ) : (
           <FloorCanvas
-            tables={tables}
+            tables={bookingTables}
             items={items}
             mode="view"
             venueId={venueId}
             onSeat={(tableId) => {
               const table = tables.find((t) => t.id === tableId);
-              if (table) setSeatTable(table);
+              if (table) {
+                setBookingTable(table);
+                setBookingOpen(true);
+              }
             }}
             onMove={(reservationId, targetTableId) =>
               move.mutate({ reservationId, targetTableId })
@@ -187,12 +223,22 @@ export function FloorView({ venueId }: { venueId: string }) {
         onClose={() => setMoveFrom(null)}
       />
 
+      <NewReservationDialog
+        venueId={venueId}
+        date={date}
+        time={time}
+        partySize={Math.min(bookingTable?.seats ?? 2, 2)}
+        initialTableId={bookingTable?.id}
+        open={bookingOpen}
+        onOpenChange={(open) => {
+          setBookingOpen(open);
+          if (!open) setBookingTable(null);
+        }}
+      />
       <WalkInDialog
         venueId={venueId}
-        open={seatTable !== null}
-        onOpenChange={(open) => !open && setSeatTable(null)}
-        tableId={seatTable?.id}
-        tableName={seatTable?.name}
+        open={walkInOpen}
+        onOpenChange={setWalkInOpen}
       />
     </div>
   );

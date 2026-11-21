@@ -44,7 +44,7 @@ describe("Dashboard accessibility", () => {
         <Dashboard />
       </ThemeProvider>,
     );
-    await waitFor(() => expect(document.title).toBe("Agenda · La Taberna · OpenCovers"));
+    await waitFor(() => expect(document.title).toBe("Floor plan · La Taberna · OpenCovers"));
 
     await user.click(screen.getAllByRole("button", { name: "Waitlist" })[0]);
     await waitFor(() => expect(document.title).toBe("Waitlist · La Taberna · OpenCovers"));
@@ -70,7 +70,7 @@ describe("Dashboard accessibility", () => {
         <Dashboard />
       </ThemeProvider>,
     );
-    await screen.findByText("AgendaView");
+    await screen.findByText("FloorView");
 
     await user.tab();
 
@@ -85,7 +85,7 @@ describe("Dashboard accessibility", () => {
         <Dashboard />
       </ThemeProvider>,
     );
-    await screen.findByText("AgendaView");
+    await screen.findByText("FloorView");
 
     await user.click(screen.getByRole("link", { name: "Skip to content" }));
 
@@ -125,11 +125,11 @@ describe("Dashboard accessibility", () => {
   it("writes tab changes to the URL and restores them on browser navigation", async () => {
     const user = userEvent.setup();
     renderWithApp(<ThemeProvider><Dashboard /></ThemeProvider>);
-    expect(await screen.findByText("AgendaView")).toBeInTheDocument();
-
-    await user.click(screen.getAllByRole("button", { name: "Floor plan" })[0]);
     expect(await screen.findByText("FloorView")).toBeInTheDocument();
-    expect(window.location.search).toBe("?view=floor");
+
+    await user.click(screen.getAllByRole("button", { name: "Agenda" })[0]);
+    expect(await screen.findByText("AgendaView")).toBeInTheDocument();
+    expect(window.location.search).toBe("?view=agenda");
 
     act(() => {
       window.history.replaceState(null, "", "/?view=availability&date=2026-11-20&party=3");

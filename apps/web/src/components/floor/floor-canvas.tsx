@@ -18,6 +18,8 @@ export interface CanvasTable {
   shape?: string;
   rotation?: number;
   occupied?: boolean;
+  /** Can this table be reserved for the entire configured seating duration? */
+  bookable?: boolean;
   reservationId?: string;
   partySize?: number;
   guestName?: string;
@@ -416,7 +418,9 @@ export function FloorCanvas({
               // A free table is named by its own text, so the name always contains what is drawn on it.
               aria-label={
                 seatable
-                  ? undefined
+                  ? t.bookable === false
+                    ? tr("floor.table.bookingConflict", { name: t.name, seats: t.seats })
+                    : undefined
                   : mode === "view"
                     ? tr("floor.table.occupiedLabel", {
                         name: t.name,
@@ -492,6 +496,8 @@ export function FloorCanvas({
                     shape === "round" ? "rounded-full" : shape === "oval" ? "rounded-[50%]" : "rounded-lg",
                     t.occupied
                       ? "border-success bg-success-soft text-success"
+                      : t.bookable === false && mode === "view"
+                        ? "border-destructive/70 bg-destructive/10 text-foreground"
                       : shape === "round"
                         ? "border-border bg-tabletop text-[oklch(0.25_0.02_70)]"
                         : "border-wood-edge bg-wood text-[oklch(0.25_0.02_70)]",
@@ -542,7 +548,9 @@ export function FloorCanvas({
                         </span>
                         {seatable && (
                           <span className="sr-only">
-                            {tr("floor.table.seatable", { seats: tr("common.seats", { count: t.seats }) })}
+                            {t.bookable === false
+                              ? tr("floor.table.conflictHint")
+                              : tr("floor.table.seatable", { seats: tr("common.seats", { count: t.seats }) })}
                           </span>
                         )}
                       </>

@@ -45,9 +45,9 @@ function validDate(value: string | null): value is string {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
-export function useUrlDate(): [string, (date: string) => void] {
+export function useUrlDate(initialDate?: string): [string, (date: string) => void] {
   const value = useUrlParam("date");
-  return [validDate(value) ? value : todayIso(), (date) => {
+  return [validDate(value) ? value : (validDate(initialDate ?? null) ? initialDate! : todayIso()), (date) => {
     if (validDate(date)) setUrlParams({ date });
   }];
 }
@@ -56,9 +56,9 @@ const validTime = (value: string | null): value is string =>
   Boolean(value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value));
 
 /** One snapshot time per floor view, persisted in the URL but never added to Back history. */
-export function useUrlTime(): [string, (time: string) => void] {
+export function useUrlTime(initial?: string): [string, (time: string) => void] {
   const value = useUrlParam("time");
-  const [initialTime] = useState(nowTime);
+  const [initialTime] = useState(() => validTime(initial ?? null) ? initial! : nowTime());
 
   // Do not silently drift with the wall clock on ordinary React re-renders.
   // A missing/invalid parameter is normalized for refresh and deep-link consistency.

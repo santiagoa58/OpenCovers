@@ -15,6 +15,7 @@ function setup(
   extra: Parameters<typeof mockApi>[0] = {},
   tables: typeof TABLES = TABLES,
   partySize = 2,
+  initialTableId?: string,
 ) {
   const api = mockApi({
     "GET /v1/venues/v1/tables": { body: { tables } },
@@ -30,6 +31,7 @@ function setup(
       time="20:30"
       partySize={partySize}
       open
+      initialTableId={initialTableId}
       onOpenChange={onOpenChange}
     />,
   );
@@ -181,7 +183,7 @@ describe("NewReservationDialog", () => {
   });
 
   it.each([
-    ["slot_taken", "One of those tables is already taken at that time. Pick another table."],
+    ["slot_taken", "Time conflict: a selected table is already reserved during this 120-minute seating window. Choose another table or arrival time."],
     ["outside_hours", "That time is outside the venue's opening hours."],
   ])(
     "shows the %s error and keeps the dialog open",
@@ -195,4 +197,27 @@ describe("NewReservationDialog", () => {
       expect(screen.getByRole("button", { name: "Create reservation" })).toBeEnabled();
     },
   );
+  it("preselects a table chosen directly from the floor and preserves the arrival time", async () => {
+    const { api, user } = setup({}, TABLES, 2, "t2");
+    expect(await screen.findByText("4 seats selected for 2 guests.")).toBeInTheDocument();
+    expect(screen.getByText("2026-11-20 at 20:30")).toBeInTheDocument();
+    await submit(user);
+    await waitFor(() => expect(api.writes()).toHaveLength(1));
+    expect(api.writes()[0].body).toMatchObject({ time: "20:30", tables: ["t2"] });
+  });
+
+  it("shows a clear conflict if a preselected floor table is unavailable during the seating window", async () => {
+    const { api } = setup({
+      "GET /v1/venues/v1/config": { body: { turnTimes: [{ upTo: 1000, minutes: 90 }] } },
+      "GET /v1/venues/v1/tables/availability": { body: { tables: [
+        { id: "t1", available: false, reservedUntil: "21:30" },
+        { id: "t2", available: true },
+      ] } },
+    }, TABLES, 2, "t1");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Time conflict");
+    expect(screen.getByText("Booked until 21:30")).toBeInTheDocument();
+    expect(screen.getByTestId("reservation-conflict-summary")).toHaveTextContent("90 minutes");
+    expect(api.writes()).toHaveLength(0);
+  });
+
 });

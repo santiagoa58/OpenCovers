@@ -1,4 +1,4 @@
-import { errorMessage } from "@/lib/error-message";
+import { errorMessage, isApiError } from "@/lib/error-message";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTables } from "@/hooks/use-tables";
+import { useVenueConfig } from "@/hooks/use-venue-config";
+import { bookingMinutes } from "@/lib/planning-conflicts";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX } from "@/lib/api";
 import { useTimeDisplay } from "@/lib/time-format";
@@ -34,6 +36,8 @@ interface NewReservationDialogProps {
   partySize: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Preselected when opening from a specific Floor plan table. */
+  initialTableId?: string;
 }
 
 export function NewReservationDialog({
@@ -43,13 +47,16 @@ export function NewReservationDialog({
   partySize,
   open,
   onOpenChange,
+  initialTableId,
 }: NewReservationDialogProps) {
   const t = useT();
   const displayTime = useTimeDisplay();
   const queryClient = useQueryClient();
   const { data } = useTables(venueId);
+  const { data: config } = useVenueConfig(venueId);
   const tables = data?.tables ?? [];
   const [selected, setSelected] = useState<string[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -68,7 +75,9 @@ export function NewReservationDialog({
     enabled: open && Boolean(date && time) && watchedPartySize > 0,
   });
   const statuses = new Map((tableAvailability.data?.tables ?? []).map((table) => [table.id, table]));
-  const unavailableSelected = selected.some((id) => statuses.get(id)?.available === false);
+  const unavailableSelected = selected.some((id) => Boolean(tableAvailability.data) && statuses.get(id)?.available !== true);
+  const reservedCount = (tableAvailability.data?.tables ?? []).filter((table) => !table.available).length;
+  const duration = bookingMinutes(config?.turnTimes, watchedPartySize);
 
   const totalSeats = useMemo(
     () =>
@@ -81,17 +90,20 @@ export function NewReservationDialog({
   useEffect(() => {
     if (open) {
       reset({ partySize, name: "", contact: "", commentary: "" });
-      setSelected([]);
+      setSelected(initialTableId ? [initialTableId] : []);
+      setSubmitError(null);
     }
-  }, [open, partySize, reset]);
+  }, [open, partySize, initialTableId, reset]);
 
   function toggleTable(id: string) {
+    setSubmitError(null);
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
   async function onSubmit(values: FormValues) {
+    setSubmitError(null);
     if (selected.length === 0) {
       toast.error(t("reservation.selectTable"));
       return;
@@ -101,7 +113,7 @@ export function NewReservationDialog({
       return;
     }
     if (tableAvailability.isPending || tableAvailability.isError || unavailableSelected) {
-      toast.error(t("reservation.tableAvailability.refresh"));
+      setSubmitError(t("reservation.tableAvailability.conflict", { minutes: duration }));
       return;
     }
     try {
@@ -123,17 +135,22 @@ export function NewReservationDialog({
       toast.success(t("reservation.new.done"));
       onOpenChange(false);
     } catch (err) {
-      toast.error(errorMessage(err, t("reservation.new.failed")));
+      const isConflict = isApiError(err, "slot_taken") || isApiError(err, "no_suitable_table");
+      setSubmitError(isConflict
+        ? t("reservation.tableAvailability.conflict", { minutes: duration })
+        : errorMessage(err, t("reservation.new.failed")));
+      if (isConflict) void tableAvailability.refetch();
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{t("reservation.new.title")}</DialogTitle>
           <DialogDescription>
             {t("reservation.new.description", { date, time: displayTime(time) })}
+            <span className="mt-1 block font-medium">{t("reservation.new.duration", { minutes: duration })}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -160,6 +177,11 @@ export function NewReservationDialog({
             <p className="text-xs text-muted-foreground">
               {t("reservation.tableAvailability.subtitle")}
             </p>
+            {tableAvailability.data && (
+              <p className="text-xs font-medium" data-testid="reservation-conflict-summary">
+                {t("reservation.tableAvailability.summary", { free: tables.length - reservedCount, booked: reservedCount, minutes: duration })}
+              </p>
+            )}
             {tableAvailability.isPending && (
               <p className="text-xs text-muted-foreground">{t("reservation.tableAvailability.checking")}</p>
             )}
@@ -171,7 +193,7 @@ export function NewReservationDialog({
                 {t("reservation.noTables")}
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
                 {tables.map((tbl) => {
                   const status = statuses.get(tbl.id);
                   const booked = status?.available === false;
@@ -181,19 +203,21 @@ export function NewReservationDialog({
                       type="button"
                       variant={selected.includes(tbl.id) ? "default" : "outline"}
                       size="sm"
-                      disabled={booked || tableAvailability.isPending || tableAvailability.isError}
+                      disabled={(booked && !selected.includes(tbl.id)) || tableAvailability.isPending || tableAvailability.isError}
                       aria-label={`${tbl.name} · ${tbl.seats} · ${booked ? t("reservation.tableAvailability.booked") : t("reservation.tableAvailability.free")}`}
                       title={booked && status?.reservedUntil
                         ? t("reservation.tableAvailability.until", { time: displayTime(status.reservedUntil) })
                         : undefined}
                       onClick={() => toggleTable(tbl.id)}
-                      className={booked ? "opacity-60" : ""}
+                      className={booked ? "h-auto min-h-11 flex-col items-start gap-0.5 whitespace-normal border-destructive/40 text-left opacity-75" : "h-auto min-h-11 flex-col items-start gap-0.5 whitespace-normal text-left"}
                     >
-                      {tbl.name} · {tbl.seats}
-                      <span className="ml-1 text-[10px]">
-                        {booked
-                          ? t("reservation.tableAvailability.booked")
-                          : tableAvailability.isPending ? "…" : t("reservation.tableAvailability.free")}
+                      <span className="font-medium">{tbl.name} · {tbl.seats}</span>
+                      <span className="text-[11px] leading-tight">
+                        {booked && status?.reservedUntil
+                          ? t("reservation.tableAvailability.until", { time: displayTime(status.reservedUntil) })
+                          : booked
+                            ? t("reservation.tableAvailability.booked")
+                            : tableAvailability.isPending ? "…" : t("reservation.tableAvailability.free")}
                       </span>
                     </Button>
                   );
@@ -201,7 +225,9 @@ export function NewReservationDialog({
               </div>
             )}
             {unavailableSelected && (
-              <p role="alert" className="text-xs text-destructive">{t("reservation.tableAvailability.refresh")}</p>
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {t("reservation.tableAvailability.conflict", { minutes: duration })}
+              </p>
             )}
             <p
               className={
@@ -244,6 +270,8 @@ export function NewReservationDialog({
               {t("reservation.noteHint", { max: COMMENTARY_MAX })}
             </p>
           </div>
+
+          {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

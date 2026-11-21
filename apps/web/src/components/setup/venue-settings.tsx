@@ -41,6 +41,7 @@ export function VenueSettings({ venueId, role }: { venueId: string; role?: Role 
   const [leadTimeMinutes, setLeadTimeMinutes] = useState("0");
   const [lastSeatingOffsetMinutes, setLastSeatingOffsetMinutes] = useState("0");
   const [overbookingCeiling, setOverbookingCeiling] = useState("0");
+  const [seatingMinutes, setSeatingMinutes] = useState("120");
   const canEditCeiling = role === undefined || role === "admin";
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export function VenueSettings({ venueId, role }: { venueId: string; role?: Role 
       setLeadTimeMinutes(String(data.leadTimeMinutes));
       setLastSeatingOffsetMinutes(String(data.lastSeatingOffsetMinutes));
       setOverbookingCeiling(String(data.overbookingCeiling ?? 0));
+      setSeatingMinutes(String(data.turnTimes?.[0]?.minutes ?? 120));
     }
   }, [data]);
 
@@ -62,6 +64,10 @@ export function VenueSettings({ venueId, role }: { venueId: string; role?: Role 
     mutationFn: async () => {
       const ceiling = parseCeiling(overbookingCeiling);
       if (ceiling === null) throw new Error("overbooking_ceiling_invalid");
+      const minutes = Number(seatingMinutes);
+      if (!/^\d+$/.test(seatingMinutes.trim()) || !Number.isInteger(minutes) || minutes < 15 || minutes > 480) {
+        throw new Error("seating_duration_invalid");
+      }
       return api.setConfig(venueId, {
         enabled,
         noticeAddress,
@@ -72,6 +78,8 @@ export function VenueSettings({ venueId, role }: { venueId: string; role?: Role 
         leadTimeMinutes: Number(leadTimeMinutes) || 0,
         lastSeatingOffsetMinutes: Number(lastSeatingOffsetMinutes) || 0,
         overbookingCeiling: ceiling,
+        // A single rule applies consistently to all party sizes. Existing bookings retain their stored end times.
+        turnTimes: [{ upTo: 1000, minutes }],
       });
     },
     onSuccess: (config) => {
@@ -84,7 +92,9 @@ export function VenueSettings({ venueId, role }: { venueId: string; role?: Role 
       const message =
         err instanceof Error && err.message === "overbooking_ceiling_invalid"
           ? t("setup.venue.ceilingInvalid", { max: OVERBOOKING_MAX })
-          : isApiError(err, "forbidden")
+          : err instanceof Error && err.message === "seating_duration_invalid"
+            ? t("setup.venue.durationInvalid")
+            : isApiError(err, "forbidden")
             ? t("setup.venue.forbidden")
             : errorMessage(err, t("setup.venue.saveFailed"));
       toast.error(message);
@@ -169,6 +179,12 @@ export function VenueSettings({ venueId, role }: { venueId: string; role?: Role 
 
             <Group title={t("setup.venue.rules")} description={t("setup.venue.rulesDescription")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="seating-duration">{t("setup.venue.seatingDuration")}</Label>
+                  <Input id="seating-duration" type="number" min={15} max={480} step={15}
+                    value={seatingMinutes} onChange={(e) => setSeatingMinutes(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">{t("setup.venue.seatingDurationHelp")}</p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="slot-interval">{t("setup.venue.slotInterval")}</Label>
                   <Input

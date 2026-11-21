@@ -53,7 +53,7 @@ describe("FloorView in Spanish", () => {
     renderWithApp(<FloorView venueId="v1" />);
     expect(await screen.findByRole("heading", { name: "Plano de sala" })).toBeInTheDocument();
     expect(await screen.findByText("4 comensales con mesas reservadas")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mesa 1, 2 plazas, sentar a un cliente sin reserva" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mesa 1, 2 plazas, crear una reserva" })).toBeInTheDocument();
     expect(screen.getByLabelText("Mesa 3: Ana, 4 comensales")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ambiente" })).toBeInTheDocument();
     expect(screen.queryByText("Floor plan")).not.toBeInTheDocument();

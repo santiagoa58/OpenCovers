@@ -94,9 +94,9 @@ describe("FloorTableCard", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("shows nothing for a free table and keeps the walk-in button", async () => {
+  it("shows nothing for a free table and keeps the reservation action", async () => {
     const { api, user } = setup([table()]);
-    const free = await screen.findByRole("button", { name: "Table 1, 2 seats, seat a walk-in" });
+    const free = await screen.findByRole("button", { name: "Table 1, 2 seats, create a reservation" });
     await user.hover(free);
     await new Promise((r) => setTimeout(r, 400));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
