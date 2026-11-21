@@ -30,7 +30,7 @@ app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
   if (!parsed.success) return sendError(c, "invalid_request");
   const body = parsed.data;
   const phoneCountry = body.phoneCountry == null ? body.phoneCountry : toCountryCode(body.phoneCountry);
-  if (body.phoneCountry && !phoneCountry) return sendError(c, "invalid_request");
+  if (body.phoneCountry != null && !phoneCountry) return sendError(c, "invalid_request");
 
   // Scheduling semantics and calendar normalization stay in their domain utilities.
   const turnTimes = body.turnTimes === undefined ? undefined : parseTurnTimes(body.turnTimes);
