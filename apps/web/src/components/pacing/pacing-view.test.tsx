@@ -114,4 +114,19 @@ describe("PacingView", () => {
     expect(earlier).toBeEnabled();
   });
 
+  it("highlights the active booking-load slot for a time between slot boundaries", async () => {
+    mockPacing([{ service: "dinner", slots: [
+      { time: "20:00", covers: 4, capacity: 10 },
+      { time: "20:15", covers: 6, capacity: 10 },
+    ] }]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <PacingView venueId="v1" date="2026-11-21" time="20:17" onSelectTime={() => {}} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByTestId("floor-slot-20:15")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("floor-slot-20:00")).toHaveAttribute("aria-pressed", "false");
+  });
+
 });

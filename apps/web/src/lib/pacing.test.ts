@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pacingLevel, peakSlot } from "./pacing";
+import { pacingLevel, pacingSlotAtTime, peakSlot } from "./pacing";
 
 const slot = (covers: number, capacity = 10, time = "20:00") => ({ time, covers, capacity });
 
@@ -26,5 +26,22 @@ describe("peakSlot", () => {
 
   it("returns null when nothing is booked", () => {
     expect(peakSlot([slot(0), slot(0, 10, "20:15")])).toBeNull();
+  });
+});
+
+describe("pacingSlotAtTime", () => {
+  it("uses the same actual slot boundaries for arbitrary selected times", () => {
+    const slots = [slot(2, 10, "16:10"), slot(3, 10, "16:40"), slot(4, 10, "17:10")];
+    expect(pacingSlotAtTime("16:46", slots)).toMatchObject({ slot: slots[1], start: 1000, end: 1030 });
+    expect(pacingSlotAtTime("17:09", slots)?.slot.time).toBe("16:40");
+    expect(pacingSlotAtTime("17:10", slots)?.slot.time).toBe("17:10");
+    expect(pacingSlotAtTime("16:09", slots)).toBeNull();
+    expect(pacingSlotAtTime("17:40", slots)).toBeNull();
+  });
+
+  it("uses a 15-minute default for an isolated slot", () => {
+    const slots = [slot(2, 10, "16:45")];
+    expect(pacingSlotAtTime("16:59", slots)?.slot.time).toBe("16:45");
+    expect(pacingSlotAtTime("17:00", slots)).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import {
   MEDIUM_FROM,
   pacingLevel,
   pacingRatio,
+  pacingSlotAtTime,
   peakSlot,
   type PacingLevel,
 } from "@/lib/pacing";
@@ -117,6 +118,7 @@ function ServiceTimeline({
   const [canScrollBack, setCanScrollBack] = useState(false);
   const [canScrollForward, setCanScrollForward] = useState(false);
   const peak = peakSlot(slots);
+  const activeSlot = pacingSlotAtTime(selectedTime, slots)?.slot.time;
 
   const updateScrollState = useCallback(() => {
     const strip = stripRef.current;
@@ -202,7 +204,7 @@ function ServiceTimeline({
             <SlotColumn
               key={slot.time}
               slot={slot}
-              selected={slot.time === selectedTime}
+              selected={slot.time === activeSlot}
               onSelectTime={onSelectTime}
             />
           ))}

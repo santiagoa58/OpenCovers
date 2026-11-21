@@ -1,7 +1,6 @@
-import { ClipboardListIcon, MessageSquareTextIcon, PrinterIcon, StarIcon } from "lucide-react";
+import { ClipboardListIcon, MessageSquareTextIcon, StarIcon } from "lucide-react";
 import { useQueries } from "@tanstack/react-query";
 import { cn } from "cn";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
 import { Pill, type PillTone } from "@/components/pill";
@@ -92,15 +91,7 @@ export function PreShiftView({
             {longDate(date)} · {displayTime(time)}
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="print:hidden"
-          disabled={agenda.isPending || missingPending || Boolean(missingError)}
-          onClick={() => window.print()}
-        >
-          <PrinterIcon />
-          {t("preshift.print")}
-        </Button>
+ 
       </div>
 
       {agenda.isPending || missingPending ? (

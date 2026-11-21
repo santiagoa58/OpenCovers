@@ -1,7 +1,7 @@
 import { errorMessage } from "@/lib/error-message";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArmchairIcon } from "lucide-react";
+import { ArmchairIcon, PrinterIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DayNav } from "@/components/day-nav";
 import { EmptyState } from "@/components/empty-state";
@@ -16,6 +16,7 @@ import { FloorCanvas } from "@/components/floor/floor-canvas";
 import { FloorSkinToggle } from "@/components/floor/floor-skin-toggle";
 import { PacingView } from "@/components/pacing/pacing-view";
 import { PreShiftView } from "@/components/preshift/pre-shift-view";
+import { PrintReservationsDialog } from "@/components/printing/print-reservations-dialog";
 import { MoveDialog } from "@/components/floor/move-dialog";
 import { useFloor } from "@/hooks/use-floor";
 import { useFloorItems } from "@/hooks/use-floor-items";
@@ -32,6 +33,7 @@ export function FloorView({ venueId }: { venueId: string }) {
   const [date, setDate] = useUrlDate();
   const [time, setTime] = useUrlTime();
   const [seatTable, setSeatTable] = useState<FloorTable | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const [moveFrom, setMoveFrom] = useState<FloorTable | null>(null);
   const queryClient = useQueryClient();
   const { data, isPending, isError, error, isRefetching, refetch } = useFloor(venueId, date, time);
@@ -60,7 +62,16 @@ export function FloorView({ venueId }: { venueId: string }) {
   return (
     <div className="space-y-8 print:space-y-0">
       <div data-testid="floor-controls" className="print:hidden">
-        <PageHeader title={t("floor.title")} description={t("floor.intro")} />
+        <PageHeader
+          title={t("floor.title")}
+          description={t("floor.intro")}
+          actions={
+            <Button variant="outline" onClick={() => setPrintOpen(true)}>
+              <PrinterIcon className="size-4" />
+              {t("preshift.print")}
+            </Button>
+          }
+        />
         <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" data-testid="floor-filter-bar">
           <DayNav date={date} onChange={setDate} showToday={false} />
           <div className="flex min-w-0 items-center gap-2">
@@ -69,7 +80,7 @@ export function FloorView({ venueId }: { venueId: string }) {
               variant="outline"
               className="shrink-0 px-3"
               onClick={() => {
-                setUrlParams({ date: todayIso(), time: nowTime() });
+                setUrlParams({ date: todayIso(), time: nowTime() }, "replace");
               }}
             >
               {t("floor.now")}
@@ -94,7 +105,7 @@ export function FloorView({ venueId }: { venueId: string }) {
             <p className="mt-1 text-sm text-muted-foreground">{t("floor.room.description")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg border bg-card px-3 py-1.5 text-sm font-medium tabular-nums">
+            <span data-testid="floor-selected-time" className="text-sm text-muted-foreground tabular-nums">
               {t("floor.timeline.selected", { time: displayTime(time) })}
             </span>
             {tables.length > 0 && <FloorSkinToggle />}
@@ -154,6 +165,17 @@ export function FloorView({ venueId }: { venueId: string }) {
           date={date}
           time={time}
           floorTables={tables}
+        />
+      )}
+
+      {printOpen && (
+        <PrintReservationsDialog
+          venueId={venueId}
+          date={date}
+          initialScope="time"
+          initialTime={time}
+          floorTables={data?.tables}
+          onClose={() => setPrintOpen(false)}
         />
       )}
 

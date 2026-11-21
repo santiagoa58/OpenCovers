@@ -1,4 +1,5 @@
-import type { FloorTable, PacingService, PacingSlot, Reservation, Table } from "@/lib/api";
+import type { FloorTable, PacingService, Reservation, Table } from "@/lib/api";
+import { pacingSlotAtTime } from "@/lib/pacing";
 
 export const LARGE_PARTY_MIN = 6;
 
@@ -21,9 +22,16 @@ export function buildPreShift(
   tables: Table[],
   service: string | null,
 ): PreShiftRow[] {
+  return buildReservationRows(
+    reservations.filter((r) => UPCOMING.has(r.status) && (service === null || r.service === service)),
+    tables,
+  );
+}
+
+/** Shared display shape for full-day reports and selected-time briefings. */
+export function buildReservationRows(reservations: Reservation[], tables: Table[]): PreShiftRow[] {
   const names = new Map(tables.map((t) => [t.id, t.name]));
   return reservations
-    .filter((r) => UPCOMING.has(r.status) && (service === null || r.service === service))
     .map((reservation) => ({
       reservation,
       tableNames: (reservation.tables ?? []).map((id) => names.get(id) ?? id),
@@ -43,23 +51,6 @@ const minutesOf = (time: string): number => {
   return hours * 60 + minutes;
 };
 
-function serviceSlot(time: string, slots: PacingSlot[]): [number, number] | null {
-  const selected = minutesOf(time);
-  for (let index = 0; index < slots.length; index++) {
-    const start = minutesOf(slots[index].time);
-    const next = slots[index + 1] && minutesOf(slots[index + 1].time);
-    const previous = index > 0 ? minutesOf(slots[index - 1].time) : null;
-    const interval = next !== undefined && next > start
-      ? next - start
-      : previous !== null && start > previous
-        ? start - previous
-        : 15;
-    // Slots from the API are sorted within each service.
-    if (selected >= start && selected < start + interval) return [start, start + interval];
-  }
-  return null;
-}
-
 export function rowsForFloorTime(
   rows: PreShiftRow[],
   selectedTime: string,
@@ -77,8 +68,10 @@ export function rowsForFloorTime(
 
   return rows.filter(({ reservation }) => {
     if (reservedIds.has(reservation.id)) return true;
-    const [start, end] = serviceSlot(selectedTime, byService.get(reservation.service) ?? [])
-      ?? [defaultStart, defaultStart + 15];
+    const activeSlot = pacingSlotAtTime(selectedTime, byService.get(reservation.service) ?? []);
+    const [start, end] = activeSlot
+      ? [activeSlot.start, activeSlot.end]
+      : [defaultStart, defaultStart + 15];
     const arrival = minutesOf(reservation.time);
     return arrival >= start && arrival < end;
   });

@@ -1,5 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Reservation } from "@/lib/api";
 import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
 import { PreShiftView } from "./pre-shift-view";
@@ -24,6 +24,7 @@ function setup(reservations: Reservation[], waitlist: unknown[] = []) {
   mockApi({
     "GET /v1/venues/v1/agenda": { body: { reservations } },
     "GET /v1/venues/v1/tables": { body: { tables: [] } },
+    "GET /v1/venues/v1/pacing": { body: { pacing: [] } },
     "GET /v1/venues/v1/services": { body: { services: [] } },
     "GET /v1/venues/v1/waitlist": { body: { entries: waitlist } },
   });
@@ -154,19 +155,16 @@ describe("PreShiftView", () => {
     );
     expect(await screen.findByText("Could not load reservation details")).toBeInTheDocument();
     expect(screen.queryByText("No matching reservations")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Print" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
     expect(api.calls("GET", "/v1/venues/v1/reservations/missing")).toHaveLength(1);
     await (await import("@testing-library/user-event")).default.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(api.calls("GET", "/v1/venues/v1/reservations/missing").length).toBeGreaterThan(1));
   });
 
-  it("prints only when reservation details are ready", async () => {
+  it("keeps reservation details print-ready without a duplicate print control", async () => {
     setup([reservation()]);
-    const print = vi.fn();
-    vi.stubGlobal("print", print);
     await screen.findByText("Jane Doe");
-    await (await import("@testing-library/user-event")).default.click(screen.getByRole("button", { name: "Print" }));
-    expect(print).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Reservation details" }).closest("section"))
       .toHaveAttribute("data-print-target", "reservation-details");
   });
