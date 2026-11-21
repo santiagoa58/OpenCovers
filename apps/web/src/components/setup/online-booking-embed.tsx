@@ -10,9 +10,12 @@ import { embedSnippet, scriptSnippet, widgetOrigin } from "@/lib/online-booking"
 
 /** A translated sentence with `{name}` spots filled by elements (the `<code>` words that stay as they are). */
 function withCode(text: string, parts: Record<string, string>) {
-  return text.split(/(\{\w+\})/).map((piece, i) => {
+  let offset = 0;
+  return text.split(/(\{\w+\})/).map((piece) => {
+    const start = offset;
+    offset += piece.length;
     const name = /^\{(\w+)\}$/.exec(piece)?.[1];
-    return name && name in parts ? <code key={i}>{parts[name]}</code> : piece;
+    return name && name in parts ? <code key={start}>{parts[name]}</code> : piece;
   });
 }
 
