@@ -24,6 +24,7 @@ import {
 import { auth, mcpRemote, trustedOrigins } from "./lib/auth";
 import { getReservationTrace } from "./lib/reservation-trace";
 import { registerRoomRoutes } from "./http/room-routes";
+import { registerVenueSettingsRoutes } from "./http/venue-settings-routes";
 import { staffOriginGuard } from "./lib/staff-origin";
 import { CHANNEL_HEADER, keyOrigin, sessionOrigin, WIDGET, type Origin } from "./lib/origin";
 import {
@@ -125,15 +126,12 @@ import { isConsent } from "./lib/consent";
 import { isCommentary } from "./lib/commentary";
 import { isRating } from "./lib/rating";
 import { isReconfirmation } from "./lib/reconfirmation";
-import { createVenue, erase, getConfig, setConfig } from "./lib/venue";
-import { effectivePublicZones, getOnlineBooking, LOCALES, parseOnlineBookingInput, rotateBookingKey, setOnlineBooking } from "./lib/online-booking";
+import { createVenue, erase } from "./lib/venue";
+import { effectivePublicZones, LOCALES } from "./lib/online-booking";
 import {
   etagMatches,
   etagOf,
   getJsonLd,
-  getProfile,
-  parseProfileInput,
-  setProfile,
 } from "./lib/public-profile";
 import {
   decodeGuestCursor,
@@ -145,16 +143,7 @@ import {
   type GuestCursor,
   type GuestWrite,
 } from "./lib/guests";
-import { toCountryCode } from "./lib/contact";
-import { isMaxActivePerGuest, isMaxAdvanceDays, parseBlockedDates } from "./lib/booking-policy";
-import { parseTurnTimes } from "./lib/turn-times";
 import { notifyReservation } from "./lib/notifications";
-import {
-  createWebhook,
-  deleteWebhook,
-  listWebhooks,
-  webhookPolicyFromEnv,
-} from "./lib/webhooks";
 import { ERRORS, errorBody, type ErrorCode } from "./lib/errors";
 import { addDays, isCalendarDate, isValidTimeZone, localDateTime } from "./lib/time";
 import {
@@ -1395,121 +1384,7 @@ function error(c: any, code: ErrorCode) {
   return c.json(errorBody(code), ERRORS[code].status);
 }
 
-app.get("/v1/venues/:venueId/config", async (c) => {
-  const venueId = c.req.param("venueId");
-  const config = await getConfig(db, venueId);
-  if (!config) return error(c, "venue_not_found");
-  return c.json(config);
-});
-
-app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (body.phoneCountry != null && !toCountryCode(body.phoneCountry)) {
-    return error(c, "invalid_request");
-  }
-  const turnTimes = body.turnTimes === undefined ? undefined : parseTurnTimes(body.turnTimes);
-  if (turnTimes === null) return error(c, "invalid_request");
-  if (body.overbookingCeiling !== undefined && !isCeiling(body.overbookingCeiling)) {
-    return error(c, "invalid_request");
-  }
-  const blockedDates = body.blockedDates === undefined ? undefined : parseBlockedDates(body.blockedDates);
-  if (blockedDates === null) return error(c, "invalid_request");
-  if (body.maxAdvanceDays != null && !isMaxAdvanceDays(body.maxAdvanceDays)) return error(c, "invalid_request");
-  if (body.maxActivePerGuestPerDay != null && !isMaxActivePerGuest(body.maxActivePerGuestPerDay)) {
-    return error(c, "invalid_request");
-  }
-  const result = await setConfig(db, venueId, {
-    enabled: body.enabled,
-    noticeAddress: body.noticeAddress,
-    notificationsEnabled: typeof body.notificationsEnabled === "boolean" ? body.notificationsEnabled : undefined,
-    resendApiKey: typeof body.resendApiKey === "string" ? body.resendApiKey : undefined,
-    fromEmail: typeof body.fromEmail === "string" ? body.fromEmail : undefined,
-    slotIntervalMinutes: isPosInt(body.slotIntervalMinutes) ? body.slotIntervalMinutes : undefined,
-    leadTimeMinutes: isPosInt(body.leadTimeMinutes) ? body.leadTimeMinutes : undefined,
-    lastSeatingOffsetMinutes: isPosInt(body.lastSeatingOffsetMinutes)
-      ? body.lastSeatingOffsetMinutes
-      : undefined,
-    phoneCountry: body.phoneCountry === null ? null : toCountryCode(body.phoneCountry) ?? undefined,
-    turnTimes,
-    overbookingCeiling: body.overbookingCeiling,
-    maxAdvanceDays: body.maxAdvanceDays,
-    maxActivePerGuestPerDay: body.maxActivePerGuestPerDay,
-    blockedDates,
-  });
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.config);
-});
-
-app.get("/v1/venues/:venueId/public-profile", async (c) => {
-  const profile = await getProfile(db, c.req.param("venueId"));
-  if (!profile) return error(c, "venue_not_found");
-  return c.json(profile);
-});
-
-app.put("/v1/venues/:venueId/public-profile", adminOnly, async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return error(c, "invalid_request");
-  }
-  const input = parseProfileInput(body);
-  if (!input) return error(c, "invalid_request");
-  const result = await setProfile(db, c.req.param("venueId"), input);
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.profile);
-});
-
-app.get("/v1/venues/:venueId/online-booking", async (c) => {
-  const settings = await getOnlineBooking(db, c.req.param("venueId"));
-  if (!settings) return error(c, "venue_not_found");
-  return c.json(settings);
-});
-
-app.put("/v1/venues/:venueId/online-booking", adminOnly, async (c) => {
-  const body = await c.req.json().catch(() => null);
-  const input = parseOnlineBookingInput(body);
-  if (!input) return error(c, "invalid_request");
-  const result = await setOnlineBooking(db, c.req.param("venueId"), input);
-  if (!result.ok) return error(c, result.code);
-  return c.json({ ...result.settings, warnings: result.warnings });
-});
-
-app.post("/v1/venues/:venueId/online-booking/rotate-key", adminOnly, async (c) => {
-  const result = await rotateBookingKey(db, c.req.param("venueId"));
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.settings);
-});
-
-app.get("/v1/venues/:venueId/webhooks", async (c) => {
-  if (c.get("role") === "read") return error(c, "forbidden");
-  const webhooks = await listWebhooks(db, c.req.param("venueId"));
-  return c.json({ webhooks });
-});
-
-app.post("/v1/venues/:venueId/webhooks", async (c) => {
-  const venueId = c.req.param("venueId");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.url !== "string") return error(c, "invalid_request");
-  const result = await createWebhook(
-    db,
-    venueId,
-    body.url,
-    webhookPolicyFromEnv(),
-    await creatorId(c),
-  );
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.webhook, 201);
-});
-
-app.delete("/v1/venues/:venueId/webhooks/:webhookId", async (c) => {
-  const venueId = c.req.param("venueId");
-  const deleted = await deleteWebhook(db, venueId, c.req.param("webhookId"));
-  if (!deleted) return error(c, "webhook_not_found");
-  const webhooks = await listWebhooks(db, venueId);
-  return c.json({ webhooks });
-});
+registerVenueSettingsRoutes(app, adminOnly, creatorId);
 
 app.post("/v1/venues/:venueId/erasure", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
@@ -1569,14 +1444,6 @@ function isRole(value: unknown): value is "read" | "write" | "admin" {
 
 function isDate(value: string): boolean {
   return isCalendarDate(value);
-}
-
-function isCeiling(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 1000;
-}
-
-function isPosInt(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
 export default app;
