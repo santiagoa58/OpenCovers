@@ -98,7 +98,7 @@ describe("NewReservationDialog", () => {
 
   it("limits the note to 500 characters and warns about health data", async () => {
     const { user } = setup();
-    expect(await screen.findByLabelText("Note")).toHaveAttribute("maxlength", "500");
+    expect(await screen.findByLabelText("Staff note")).toHaveAttribute("maxlength", "500");
     expect(
       screen.getByText("Optional instructions for staff, up to 500 characters. Do not include sensitive personal or health information."),
     ).toBeInTheDocument();
