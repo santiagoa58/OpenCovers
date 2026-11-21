@@ -6,7 +6,7 @@
 
 **The open-source reservations engine for restaurants — availability, bookings, tables, and the event feed, with an API and an MCP server.**
 
-<sub>Pre-alpha: it runs locally with tests. Public site: <a href="https://opencovers.dev">opencovers.dev</a>. A hosted demo runs for internal testing and opens to the public after legal review.</sub>
+<sub>Pre-alpha: restaurant reservations, staff management, the booking widget, and an MCP server.</sub>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)
@@ -128,10 +128,10 @@ cd OpenCovers
 docker compose up -d   # PostgreSQL
 pnpm install
 pnpm db:migrate
-pnpm dev               # API :3000 · staff app :5173 · site :5174
+pnpm dev               # API :3000 · staff app :5173
 ```
 
-Open <http://localhost:5173>, sign up, and create a venue. The public site is at <http://localhost:5174>. The full guide is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Open <http://localhost:5173>, sign up, and create a venue. The full guide is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 To run the MCP server, use `npx -y @opencovers/mcp` or see [apps/mcp](apps/mcp/README.md). Create an agent key from the staff app under **Setup → API keys**.
 
@@ -164,37 +164,15 @@ Exact steps from a clean machine to a running stack. Intended layout: Ubuntu on 
    pnpm typecheck
    pnpm test
    pnpm build
-   pnpm dev                 # API :3000 · staff app :5173 · site :5174
+   pnpm dev                 # API :3000 · staff app :5173
    ```
 6. **Environment**: none is needed locally. To override a default, `cp .env.example .env` and uncomment only what you change. Never commit `.env`.
 
-Notes: use `git config core.autocrlf input` only if you also edit on Windows outside WSL (the repo already normalizes to LF). A fresh machine starts with an empty database, so create a new venue after signing up, or load a ready-made demo venue with `pnpm demo:seed` (see Demo data below). The brand kit in `docs/brand` needs Chrome or Chromium only if you regenerate it.
-
-## Demo data
-
-To record a video or try the staff app with a believable venue, start the stack and seed a fresh database:
-
-```sh
-pnpm db:migrate
-pnpm dev                 # in one terminal
-pnpm demo:seed           # in another
-```
-
-It creates the invented venue "La Taberna del Faro" through the HTTP API: two services, 12 tables in two zones with a floor plan, online booking, a public profile, about 25 reservations across today and the next three days (some seated, attended, no-show, cancelled or modified), a waitlist, a second team member (role `write`) and a pending invitation, a read key, a write key, a self-service link and an MCP host config. It prints the sign-ins (`demo@opencovers.test` and the second member, local-only demo passwords), the booking widget URL and the keys. All guests are invented and use `example.com` addresses. Run it once per account: it stops with a message if the account already has a venue named "La Taberna del Faro". The API generates the venue id and the script prints it. `ALLDAY=1 pnpm demo:seed` uses one service from 09:00 to 23:45 so walk-ins work at any hour. It refuses `NODE_ENV=production` and any non-local `BASE`. For a thin venue on an account you already have, use `pnpm db:seed-demo <email>`.
-
-## Demo
-
-A quick walkthrough of the agenda and the floor plan.
-
-<p align="center">
-  <img src="docs/assets/opencovers-demo.gif" alt="OpenCovers demo: agenda, availability, double-booking protection, waitlist, floor editor, team and the booking widget (Spanish captions)" width="720">
-</p>
-
-> [Download the full-resolution demo (MP4)](https://raw.githubusercontent.com/David-Cabeza/OpenCovers/main/docs/assets/opencovers-demo.mp4)
+Notes: use `git config core.autocrlf input` only if you also edit on Windows outside WSL (the repo already normalizes to LF). A fresh machine starts with an empty database, so create a new venue after signing up,. The brand kit in `docs/brand` needs Chrome or Chromium only if you regenerate it.
 
 ## Screenshots
 
-The staff app in action: the agenda, the floor plan, the floor editor, the waitlist, the online booking settings and the team screen. All screens show the invented demo venue "La Taberna del Faro" (`pnpm demo:seed`), running locally.
+The staff app includes the agenda, floor plan, floor editor, waitlist, online booking settings, and team screen.
 
 <p align="center">
   <img src="docs/assets/agenda.webp" alt="Agenda for the day: a table of reservations with guest, party size, table and status (booked, seated, attended, cancelled, no-show)" width="420">
@@ -213,7 +191,7 @@ The staff app in action: the agenda, the floor plan, the floor editor, the waitl
   <img src="docs/assets/team.webp" alt="Team screen: members with their roles, invitations and the audit log" width="700">
 </p>
 
-The guest-facing pages, in Spanish because the demo venue is configured in Spanish. The booking widget and the self-service page are still in progress, so treat them as a preview.
+The guest-facing booking widget and self-service screens.
 
 <p align="center">
   <img src="docs/assets/widget.webp" alt="Booking widget at /w/ with the guest details step: name, email or phone, optional comment and a Book button" width="280">
@@ -227,7 +205,6 @@ apps/api     the reservation engine and the HTTP API
 apps/web     the staff app
 apps/widget  the guest booking widget and self-service page, served by the API at /w/{bookingKey} and /r
 apps/mcp     the MCP server
-apps/site    the public website
 docs/        the contract, ADRs, and requirements
 ```
 
@@ -242,17 +219,13 @@ docs/        the contract, ADRs, and requirements
 - Erasure returns counts and keeps hashes, not personal values.
 - The contract and the conformance cases come before the implementation.
 
-## Hosted demo
-
-A hosted demo runs for internal testing. It opens to the public after legal review of its consent text and privacy notice. With `DEMO_MODE=1` one deployment becomes a public demo where each visitor signs in with an emailed magic link, after a proof-of-work challenge, and gets a sandbox restaurant of their own, with caps on what it can hold and a sandbox bar and guided tour in the staff app. It runs on its own host and database, never next to real data, and it is off by default. See [ADR-0022](docs/adr/0022-hosted-demo-sandbox.md) and the [deploy guide](docs/deploy.md#hosted-demo). The public site links to it only once an address is set.
-
 ## Deploy
 
-OpenCovers has no hosting vendor dependency. It needs PostgreSQL and a Node.js process. The API ships as a Docker image, and the staff app is a static build that any web server can serve. Whoever forks it for a venue decides where the database lives. The project's own site is on GitHub Pages at [opencovers.dev](https://opencovers.dev). See [docs/deploy.md](docs/deploy.md). Self-hosters should also read the [hardening guide](docs/hardening.md).
+OpenCovers has no hosting vendor dependency. It needs PostgreSQL and a Node.js process. The API ships as a Docker image, and the staff app is a static build that any web server can serve. Whoever forks it for a venue decides where the database lives. See [docs/deploy.md](docs/deploy.md). Self-hosters should also read the [hardening guide](docs/hardening.md).
 
 ## Status
 
-Pre-alpha. The engine, the staff screens, and the MCP server are implemented and tested locally. Of the 78 conformance cases, 54 pass (C1 to C4, C6 to C17, C19 to C39, C41, C42, C46 to C49, C53, C54, C56 and C59 to C66), signed webhooks included. 13 are partial (C5, C18, C40, C43 to C45, C50 to C52, C55, C57, C58 and C67). The other 11 (C68 to C78) specify the public waitlist of ADR-0021, which is not built yet. 17 cases (C39 to C55) specify the booking widget and self-service link, whose contract is written. Stages 2 to 7, 9, 10, 12 and 15 of ADR-0017 are built. They are the online booking settings, the public booking API for config, availability and create, the guest self-service link to read, change and cancel a booking, the booking widget with its framed page, the guest's self-service page, the Online booking card in Setup, the venue's theme (colors, corner radius, font and logo) in the widget and in Setup, the `embed.js` script that sizes the iframe and passes the host page's language, a "lost your link?" form that emails a new link when the venue has email on (placeholder email text), and the widget in seven languages, five of them waiting for native review. ADR-0021 adds the day strip, the zone choice and the summary step (stages 3, 6 and 9). Of those 17 cases, nine pass and eight are partial (C40, C43, C44, C45, C50, C51, C52, C55). The production stack is ready (Dockerfile, a Compose stack behind Caddy with security headers and health checks, and a runbook), and the same images run the hosted demo, which is open only for internal testing until legal review. Email delivery is wired via Resend; the templates' legal text and consent basis are still pending review. See [ROADMAP.md](ROADMAP.md).
+Pre-alpha. The engine, the staff screens, and the MCP server are implemented and tested locally. Of the 78 conformance cases, 54 pass (C1 to C4, C6 to C17, C19 to C39, C41, C42, C46 to C49, C53, C54, C56 and C59 to C66), signed webhooks included. 13 are partial (C5, C18, C40, C43 to C45, C50 to C52, C55, C57, C58 and C67). The other 11 (C68 to C78) specify the public waitlist of ADR-0021, which is not built yet. 17 cases (C39 to C55) specify the booking widget and self-service link, whose contract is written. Stages 2 to 7, 9, 10, 12 and 15 of ADR-0017 are built. They are the online booking settings, the public booking API for config, availability and create, the guest self-service link to read, change and cancel a booking, the booking widget with its framed page, the guest's self-service page, the Online booking card in Setup, the venue's theme (colors, corner radius, font and logo) in the widget and in Setup, the `embed.js` script that sizes the iframe and passes the host page's language, a "lost your link?" form that emails a new link when the venue has email on (placeholder email text), and the widget in seven languages, five of them waiting for native review. ADR-0021 adds the day strip, the zone choice and the summary step (stages 3, 6 and 9). Of those 17 cases, nine pass and eight are partial (C40, C43, C44, C45, C50, C51, C52, C55). The production stack is ready (Dockerfile, a Compose stack behind Caddy with security headers and health checks, and a runbook), Email delivery is wired via Resend; the templates' legal text and consent basis are still pending review. See [ROADMAP.md](ROADMAP.md).
 
 ## Contributing
 
