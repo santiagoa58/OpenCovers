@@ -30,9 +30,9 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            biome lint --changed --since=origin/main apps
+            biome lint --max-diagnostics=200 --changed --since=origin/main apps
           else
-            biome lint --changed --since=HEAD^ apps
+            biome lint --max-diagnostics=200 --changed --since=HEAD^ apps
           fi
 
   # Run type checks independently of tests so the slow database suite does not
