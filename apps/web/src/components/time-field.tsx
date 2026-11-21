@@ -15,7 +15,7 @@ interface TimeFieldProps {
 const MINUTES = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"));
 const HOURS_24 = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
 const HOURS_12 = Array.from({ length: 12 }, (_, hour) => String(hour + 1));
-const SELECT_CLASS = "h-11 sm:h-9 min-w-0 rounded-md border border-input bg-background px-1.5 text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
+const SELECT_CLASS = "h-10 min-w-0 bg-transparent px-1.5 text-sm tabular-nums outline-none focus-visible:rounded-sm focus-visible:bg-accent disabled:opacity-50 sm:h-8";
 
 /** Browser-independent time control. Only HH:mm values reach state and the API. */
 export function TimeField({ id, label, value, onChange, onBlur, disabled, className }: TimeFieldProps) {
@@ -36,11 +36,11 @@ export function TimeField({ id, label, value, onChange, onBlur, disabled, classN
   }
 
   return (
-    <div role="group" aria-label={label} className={cn("flex w-fit max-w-full items-center gap-1", className)}>
+    <div role="group" aria-label={label} className={cn("flex h-11 w-fit max-w-full items-center gap-1 rounded-md border border-input bg-background px-1 shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 sm:h-9", className)}>
       <select
         id={id}
         aria-label={`${label} ${t("dates.time.hour")}`}
-        className={cn(SELECT_CLASS, "w-[3.75rem]")}
+        className={cn(SELECT_CLASS, "w-[3.25rem]")}
         value={hour}
         disabled={disabled}
         onBlur={onBlur}
@@ -52,7 +52,7 @@ export function TimeField({ id, label, value, onChange, onBlur, disabled, classN
       <span aria-hidden="true" className="text-muted-foreground">:</span>
       <select
         aria-label={`${label} ${t("dates.time.minute")}`}
-        className={cn(SELECT_CLASS, "w-[3.75rem]")}
+        className={cn(SELECT_CLASS, "w-[3.5rem]")}
         value={minute}
         disabled={disabled}
         onBlur={onBlur}
@@ -64,7 +64,7 @@ export function TimeField({ id, label, value, onChange, onBlur, disabled, classN
       {format === "12h" && (
         <select
           aria-label={`${label} ${t("dates.time.period")}`}
-          className={cn(SELECT_CLASS, "w-[4.25rem]")}
+          className={cn(SELECT_CLASS, "w-[4rem] border-l border-border pl-2")}
           value={period}
           disabled={disabled}
           onBlur={onBlur}
