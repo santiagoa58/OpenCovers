@@ -449,6 +449,7 @@ describe("C49 guest modify", () => {
       { version: 1, commentary: "x".repeat(501) },
       { version: 1, guest: { consent: "denied" } },
       { version: 1, guest: {} },
+      { version: 1, commentary: "okay", unexpected: true },
       { version: 1, guest: { name: "Eve" } },
       "not json",
     ];
