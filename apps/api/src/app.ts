@@ -24,7 +24,7 @@ import { auth, mcpRemote, trustedOrigins } from "./lib/auth";
 import { getReservationTrace } from "./lib/reservation-trace";
 import { registerRoomRoutes } from "./http/room-routes";
 import { staffReservationSchema, staffWalkInSchema, staffWaitlistSchema, staffModifySchema, staffStatusSchema } from "./http/staff-reservation-schemas";
-import { createVenueSchema, transferCreatorSchema, invitationSchema, roleChangeSchema, invitationTokenSchema, instanceKeySchema, instanceKeyRevokeSchema, venueKeySchema, venueKeyRevokeSchema, mergeGuestSchema, erasureSchema } from "./http/admin-schemas";
+import { createVenueSchema, transferCreatorSchema, invitationSchema, roleChangeSchema, invitationTokenSchema, instanceKeySchema, instanceKeyRevokeSchema, venueKeySchema, venueKeyRevokeSchema, mergeGuestSchema, erasureSchema, blocklistAddSchema, blocklistSubjectSchema } from "./http/admin-schemas";
 import type { AppEnv } from "./http/types";
 import { registerVenueSettingsRoutes } from "./http/venue-settings-routes";
 import { staffOriginGuard } from "./lib/staff-origin";
@@ -38,7 +38,6 @@ import {
   encodeBlocklistCursor,
   lookupBlocklist,
   pageBlocklist,
-  parseBlocklistReason,
   parseBlocklistSubject,
   removeFromBlocklist,
   type BlocklistCursor,
@@ -747,17 +746,21 @@ app.get(BLOCKLIST, adminOnly, staffSessionOnly, queryOnly("limit", "cursor"), as
 app.post(BLOCKLIST, adminOnly, staffSessionOnly, queryOnly(), async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  const subject = parseBlocklistSubject(body);
-  const reason = parseBlocklistReason(body?.reason);
-  if (!subject || reason === undefined) return error(c, "invalid_request");
-  const result = await addToBlocklist(db, blocklistKeys, c.req.param("venueId"), user.id, subject, reason);
+  const parsed = blocklistAddSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const subject = parseBlocklistSubject(parsed.data);
+  if (!subject) return error(c, "invalid_request");
+  const result = await addToBlocklist(
+    db, blocklistKeys, c.req.param("venueId"), user.id, subject, parsed.data.reason ?? null,
+  );
   if (!result.ok) return error(c, result.code);
   return c.json({ entries: result.entries, bookedReservations: result.bookedReservations });
 });
 
 app.post(`${BLOCKLIST}/lookup`, adminOnly, staffSessionOnly, queryOnly(), async (c) => {
-  const subject = parseBlocklistSubject(await c.req.json().catch(() => null));
+  const parsed = blocklistSubjectSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const subject = parseBlocklistSubject(parsed.data);
   if (!subject) return error(c, "invalid_request");
   const result = await lookupBlocklist(db, blocklistKeys, c.req.param("venueId"), subject);
   if (!result.ok) return error(c, result.code);
