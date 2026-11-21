@@ -252,7 +252,6 @@ export function FloorCanvas({
             : { minWidth: naturalWidth, height: naturalHeight }),
           ...skin.floor(mode),
         }}
-        onDragOver={(e) => e.preventDefault()}
       >
         {items.map((item) => {
           const pos = posOf("item", item.id, item.posX, item.posY);
@@ -381,9 +380,9 @@ export function FloorCanvas({
               }}
             >
               <div className="absolute inset-0" style={{ transform: `rotate(${rotation}deg)` }}>
-                {chairPositions(shape, t.seats, size).map((c, i) => (
+                {chairPositions(shape, t.seats, size).map((c) => (
                   <div
-                    key={i}
+                    key={`${c.x}:${c.y}`}
                     className={cn(
                       "absolute h-[15px] w-[17px] rounded-[5px] border border-wood-edge bg-wood",
                       skin.chairShadow,
