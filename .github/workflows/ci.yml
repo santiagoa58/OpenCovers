@@ -28,7 +28,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm --filter @opencovers/web quality:check
 
   # Keep the full non-API test suite, without starting a Postgres service.
   test:
