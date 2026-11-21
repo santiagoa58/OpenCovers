@@ -112,7 +112,7 @@ export function PrintReservationsDialog({
     );
 
   const loading = agenda.isPending || tables.isPending ||
-    (scope === "time" && (!snapshotReady || pacing.isPending || missing.some((query) => query.isPending)));
+    (scope === "time" && ((!originalSnapshot && floor.isPending) || pacing.isPending || missing.some((query) => query.isPending)));
   const firstError =
     (agenda.isError && !agenda.data ? agenda.error : null) ||
     (tables.isError && !tables.data ? tables.error : null) ||

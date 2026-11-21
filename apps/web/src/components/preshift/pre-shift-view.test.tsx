@@ -1,5 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Reservation } from "@/lib/api";
 import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
 import { PreShiftView } from "./pre-shift-view";

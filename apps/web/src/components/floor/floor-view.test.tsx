@@ -316,7 +316,7 @@ describe("FloorView", () => {
     expect(push).not.toHaveBeenCalled();
     const params = new URLSearchParams(window.location.search);
     expect(params.get("date")).toBe(todayIso());
-    expect(params.get("time")).toMatch(/^([01]\\d|2[0-3]):[0-5]\\d$/);
+    expect(params.get("time")).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
     expect(screen.getByTestId("floor-selected-time")).toHaveTextContent("Viewing");
   });
 
