@@ -1,0 +1,11 @@
+# Build upstream OpenCovers images without modifying application code.
+steps:
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-f', 'apps/api/Dockerfile', '-t', '${_API_IMAGE}', '.']
+  - id: build-web
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-f', 'apps/web/Dockerfile', '-t', '${_WEB_IMAGE}', '.']
+images:
+  - '${_API_IMAGE}'
+  - '${_WEB_IMAGE}'
