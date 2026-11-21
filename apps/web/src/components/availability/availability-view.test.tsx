@@ -50,7 +50,7 @@ describe("AvailabilityView", () => {
   it("lists each service's slots, counts the free ones and keeps the taken ones clickable", async () => {
     setup();
     expect(await screen.findByRole("heading", { name: "dinner" })).toBeInTheDocument();
-    expect(screen.getByText("2 of 3 free")).toBeInTheDocument();
+    expect(screen.getByText("2 of 3 tables available")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "20:00" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "20:15" })).toBeEnabled();
   });
