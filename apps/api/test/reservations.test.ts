@@ -9,6 +9,7 @@ import {
   getAvailability,
   getFloorPlan,
   getPacing,
+  getTableAvailability,
   getReservation,
   listByPrincipal,
   modifyReservation,
@@ -258,6 +259,20 @@ describe("reservations", () => {
 
     const after = await getFloorPlan(db, "floor", "2026-11-12", "23:00");
     expect(after.find((t) => t.id === "1")?.occupied).toBe(false);
+  });
+
+  it("marks a table unavailable when its reservation overlaps any part of the proposed seating", async () => {
+    await seedVenue("table-availability");
+    const booked = await createReservation(db, "table-availability",
+      { ...input, time: "21:00" }, "table-availability-k1");
+    expect(booked.ok).toBe(true);
+    const atArrival = await getTableAvailability(db, "table-availability", "2026-11-12", "21:00", 2);
+    expect(atArrival.find((t) => t.id === "1")?.available).toBe(false);
+    const beforeBusyWindow = await getTableAvailability(db, "table-availability", "2026-11-12", "20:30", 2);
+    expect(beforeBusyWindow.find((t) => t.id === "1")?.available).toBe(false);
+    expect(beforeBusyWindow.find((t) => t.id === "2")?.available).toBe(true);
+    const after = await getTableAvailability(db, "table-availability", "2026-11-12", "23:00", 2);
+    expect(after.find((t) => t.id === "1")?.available).toBe(true);
   });
 
   it("reports pacing (covers vs capacity) per slot", async () => {
