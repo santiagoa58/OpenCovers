@@ -86,45 +86,6 @@ const es = {
   "footer.notice": "Aviso automático de las reservas de {venue}.",
 } as const;
 
-/** The OpenCovers-owned sign-in mail of the hosted demo. English and Spanish, reviewed with the site copy. */
-export interface MagicLinkMessages {
-  subject: string;
-  preheader: string;
-  heading: string;
-  intro: string;
-  button: string;
-  outro: string;
-  footer: string;
-}
-
-const MAGIC_LINK: Record<"es" | "en", MagicLinkMessages> = {
-  es: {
-    subject: "Tu enlace para entrar en la demo de OpenCovers",
-    preheader: "Pulsa el enlace para entrar. Caduca en 5 minutos.",
-    heading: "Entra en la demo",
-    intro: "Pulsa el botón para entrar en la demo de OpenCovers. El enlace caduca en 5 minutos.",
-    button: "Entrar en la demo",
-    outro: "Si no lo has pedido tú, ignora este mensaje.",
-    footer: "OpenCovers · opencovers.dev",
-  },
-  en: {
-    subject: "Your link to the OpenCovers demo",
-    preheader: "Tap the link to sign in. It expires in 5 minutes.",
-    heading: "Sign in to the demo",
-    intro: "Tap the button to sign in to the OpenCovers demo. The link expires in 5 minutes.",
-    button: "Open the demo",
-    outro: "If you did not ask for this, you can ignore this message.",
-    footer: "OpenCovers · opencovers.dev",
-  },
-};
-
-/** The sign-in mail text for a locale: Spanish for `es*`, English for everything else. */
-export function magicLinkMessages(locale: string): { lang: "es" | "en"; text: MagicLinkMessages } {
-  return locale.toLowerCase().startsWith("es") ? { lang: "es", text: MAGIC_LINK.es } : { lang: "en", text: MAGIC_LINK.en };
-}
-
-export const MAGIC_LINK_CATALOGS = MAGIC_LINK;
-
 export type EmailMessageId = keyof typeof es;
 
 /** The shipped catalogs. A locale without an entry here has no catalog yet and falls back (see `resolveEmailLocale`). */
