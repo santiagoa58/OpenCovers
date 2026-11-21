@@ -26,6 +26,8 @@ describe("PacingView in Spanish", () => {
 
     expect(await screen.findByText("Máximo 4/10 a las 20:00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Carga de reservas" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Carga de reservas para dinner/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Horas posteriores" })).toBeInTheDocument();
     expect(screen.getByTestId("floor-slot-20:00")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("menos del 50%")).toBeInTheDocument();
     expect(screen.getByTitle("20:00 — 4/10 cubiertos")).toBeInTheDocument();

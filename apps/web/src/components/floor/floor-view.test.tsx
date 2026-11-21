@@ -250,4 +250,15 @@ describe("FloorView", () => {
     expect(screen.getByRole("combobox", { name: "Time minute" })).toHaveValue("45");
   });
 
+  it("gives date and time their own responsive toolbar without squeezing the page title", async () => {
+    setup([table()]);
+    await screen.findByRole("heading", { name: "Booking load" });
+    const toolbar = screen.getByTestId("floor-filter-bar");
+    expect(toolbar).toHaveClass("flex-col", "sm:flex-row", "min-w-0");
+    expect(screen.getByLabelText("Date").parentElement).toHaveClass("w-full", "min-w-0", "sm:w-auto");
+    const timePicker = screen.getByRole("group", { name: "Time" });
+    expect(timePicker).toHaveClass("border", "rounded-md");
+    expect(screen.getByRole("button", { name: "Now" })).toBeInTheDocument();
+  });
+
 });
