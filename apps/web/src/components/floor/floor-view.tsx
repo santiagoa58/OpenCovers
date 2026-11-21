@@ -1,7 +1,7 @@
 import { errorMessage } from "@/lib/error-message";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArmchairIcon, PrinterIcon } from "lucide-react";
+import { ArmchairIcon, PlusIcon, PrinterIcon, UserRoundCheckIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DayNav } from "@/components/day-nav";
 import { EmptyState } from "@/components/empty-state";
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { TimeField } from "@/components/time-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
+import { NewReservationDialog } from "@/components/reservation/new-reservation-dialog";
+import { PlanningConflictsBanner } from "@/components/floor/planning-conflicts-banner";
 import { FloorCanvas } from "@/components/floor/floor-canvas";
 import { FloorSkinToggle } from "@/components/floor/floor-skin-toggle";
 import { PacingView } from "@/components/pacing/pacing-view";
@@ -32,7 +34,9 @@ export function FloorView({ venueId }: { venueId: string }) {
   const displayTime = useTimeDisplay();
   const [date, setDate] = useUrlDate();
   const [time, setTime] = useUrlTime();
-  const [seatTable, setSeatTable] = useState<FloorTable | null>(null);
+  const [bookingTable, setBookingTable] = useState<FloorTable | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [walkInOpen, setWalkInOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [moveFrom, setMoveFrom] = useState<FloorTable | null>(null);
   const queryClient = useQueryClient();
@@ -66,10 +70,20 @@ export function FloorView({ venueId }: { venueId: string }) {
           title={t("floor.title")}
           description={t("floor.intro")}
           actions={
-            <Button variant="outline" onClick={() => setPrintOpen(true)}>
-              <PrinterIcon className="size-4" />
-              {t("preshift.print")}
-            </Button>
+            <>
+              <Button onClick={() => { setBookingTable(null); setBookingOpen(true); }}>
+                <PlusIcon className="size-4" />
+                {t("floor.plan.addReservation")}
+              </Button>
+              <Button variant="outline" onClick={() => setWalkInOpen(true)}>
+                <UserRoundCheckIcon className="size-4" />
+                {t("floor.plan.walkInNow")}
+              </Button>
+              <Button variant="outline" onClick={() => setPrintOpen(true)}>
+                <PrinterIcon className="size-4" />
+                {t("preshift.print")}
+              </Button>
+            </>
           }
         />
         <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" data-testid="floor-filter-bar">
@@ -87,6 +101,10 @@ export function FloorView({ venueId }: { venueId: string }) {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="print:hidden">
+        <PlanningConflictsBanner venueId={venueId} date={date} />
       </div>
 
       <div data-testid="floor-pacing" className="print:hidden">
@@ -145,7 +163,10 @@ export function FloorView({ venueId }: { venueId: string }) {
             venueId={venueId}
             onSeat={(tableId) => {
               const table = tables.find((t) => t.id === tableId);
-              if (table) setSeatTable(table);
+              if (table) {
+                setBookingTable(table);
+                setBookingOpen(true);
+              }
             }}
             onMove={(reservationId, targetTableId) =>
               move.mutate({ reservationId, targetTableId })
@@ -187,12 +208,22 @@ export function FloorView({ venueId }: { venueId: string }) {
         onClose={() => setMoveFrom(null)}
       />
 
+      <NewReservationDialog
+        venueId={venueId}
+        date={date}
+        time={time}
+        partySize={Math.min(bookingTable?.seats ?? 2, 2)}
+        initialTableId={bookingTable?.id}
+        open={bookingOpen}
+        onOpenChange={(open) => {
+          setBookingOpen(open);
+          if (!open) setBookingTable(null);
+        }}
+      />
       <WalkInDialog
         venueId={venueId}
-        open={seatTable !== null}
-        onOpenChange={(open) => !open && setSeatTable(null)}
-        tableId={seatTable?.id}
-        tableName={seatTable?.name}
+        open={walkInOpen}
+        onOpenChange={setWalkInOpen}
       />
     </div>
   );
