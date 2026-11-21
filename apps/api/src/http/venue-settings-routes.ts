@@ -27,7 +27,7 @@ app.get("/v1/venues/:venueId/config", async (c) => {
 app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
   const parsed = venueConfigSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return sendError(c, "invalid_request");
+  if (!parsed.success || Object.keys(parsed.data).length === 0) return sendError(c, "invalid_request");
   const body = parsed.data;
   // Omitting a field preserves its current value. Explicit null is supported only for nullable settings.
   let phoneCountry: ReturnType<typeof toCountryCode> | undefined;
