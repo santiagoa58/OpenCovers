@@ -3,7 +3,6 @@ import {
   EMAIL_CATALOGS,
   formatEmailDay,
   formatEmailDayShort,
-  magicLinkMessages,
   message,
   partyLabel,
   resolveEmailLocale,
@@ -350,20 +349,3 @@ export function buildWaitlistJoinEmail(mail: WaitlistJoinMail, requested: string
   };
 }
 
-/** The demo's sign-in mail. OpenCovers sends it itself, so it is fully branded: no venue stands behind it. */
-export function buildMagicLinkEmail(locale: string, url: string): BuiltEmail {
-  const { lang, text: t } = magicLinkMessages(locale);
-  const layout: EmailLayout = {
-    brand: { kind: "opencovers" },
-    preheader: t.preheader,
-    heading: t.heading,
-    blocks: [
-      { kind: "paragraph", text: t.intro },
-      { kind: "button", label: t.button, url, showUrl: true },
-      { kind: "paragraph", text: t.outro },
-    ],
-    footer: t.footer,
-    lang,
-  };
-  return { subject: t.subject, text: renderEmailText(layout), html: renderEmailHtml(layout), attachments: [] };
-}
