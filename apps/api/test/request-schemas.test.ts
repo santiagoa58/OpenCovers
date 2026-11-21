@@ -2,10 +2,25 @@ import { describe, expect, it } from "vitest";
 import { floorItemSchema, serviceSchema, tableLayoutSchema, tableSchema } from "../src/http/room-schemas";
 import { venueConfigSchema, webhookCreateSchema } from "../src/http/venue-settings-schemas";
 import { staffReservationSchema, staffWalkInSchema, staffModifySchema, staffStatusSchema, staffWaitlistSchema } from "../src/http/staff-reservation-schemas";
+import { createVenueSchema, invitationSchema, instanceKeySchema, venueKeySchema, erasureSchema, mergeGuestSchema } from "../src/http/admin-schemas";
 import { parseDays } from "../src/lib/catalog";
 import { parseTurnTimes } from "../src/lib/turn-times";
 
 describe("request schemas", () => {
+  it("requires explicit, correctly typed admin actions rather than accepting null or ignored keys", () => {
+    expect(createVenueSchema.safeParse({ name: "Restaurant" }).success).toBe(true);
+    expect(createVenueSchema.safeParse({ name: "  " }).success).toBe(false);
+    expect(createVenueSchema.safeParse({ name: "Restaurant", timezone: null }).success).toBe(false);
+    expect(createVenueSchema.safeParse({ name: "Restaurant", nam: "typo" }).success).toBe(false);
+    expect(invitationSchema.safeParse({ role: "write", expiresInHours: 72 }).success).toBe(true);
+    expect(invitationSchema.safeParse({ role: "write", expiresInHours: null }).success).toBe(false);
+    expect(instanceKeySchema.safeParse({ key: "secret", principal: "agent", role: "admin" }).success).toBe(true);
+    expect(instanceKeySchema.safeParse({ key: "secret", principal: "agent", role: "admin", venues: null }).success).toBe(false);
+    expect(venueKeySchema.safeParse({ key: "secret", principal: "agent", role: "admin" }).success).toBe(false);
+    expect(mergeGuestSchema.safeParse({ intoGuestId: null }).success).toBe(false);
+    expect(erasureSchema.safeParse({ guestId: 123 }).success).toBe(false);
+  });
+
   it("rejects malformed or unexpected staff reservation fields instead of silently dropping them", () => {
     const valid = { date: "2026-11-22", time: "19:00", partySize: 2 };
     expect(staffReservationSchema.safeParse(valid).success).toBe(true);
