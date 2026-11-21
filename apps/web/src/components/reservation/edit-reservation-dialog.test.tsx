@@ -43,7 +43,7 @@ describe("EditReservationDialog", () => {
     setup();
 
     expect(screen.getByText("Update the details recorded for Jane Doe.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Note")).toHaveValue("Window seat");
+    expect(screen.getByLabelText("Staff note")).toHaveValue("Window seat");
     expect(screen.getByLabelText("Note")).toHaveAttribute("maxlength", "500");
     expect(
       screen.getByText("Up to 500 characters. Do not enter health data such as allergies."),
