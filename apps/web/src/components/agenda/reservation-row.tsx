@@ -154,7 +154,7 @@ function ReservationTables({
   canAssign: boolean;
 }) {
   const t = useT();
-  if (tableIds.length > 0) return <>{tableIds.map((id) => tableNames.get(id) ?? id).join(", ")}</>;
+  if (tableIds.length !== 0) return <>{tableIds.map((id) => tableNames.get(id) ?? id).join(", ")}</>;
   if (!canAssign) return <span className="text-muted-foreground">—</span>;
   return (
     <Badge variant="outline" className="border-transparent bg-danger-soft text-destructive">
