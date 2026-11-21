@@ -196,7 +196,7 @@ function ServiceTimeline({
           tabIndex={0}
           onScroll={updateScrollState}
           data-testid="booking-load-strip"
-          className="relative flex min-w-0 snap-x snap-proximity gap-1.5 overflow-x-auto overscroll-x-contain rounded-md px-1 pt-1 pb-3 touch-pan-x focus-visible:outline-2 focus-visible:outline-primary sm:gap-2"
+          className="relative flex min-w-0 snap-x snap-proximity gap-1.5 overflow-x-auto overscroll-x-contain rounded-md px-1 pt-1 pb-3 focus-visible:outline-2 focus-visible:outline-primary sm:gap-2"
         >
           {slots.map((slot) => (
             <SlotColumn

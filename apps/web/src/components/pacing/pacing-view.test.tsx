@@ -88,7 +88,7 @@ describe("PacingView", () => {
     mockPacing([{ service: "dinner", slots }]);
     renderView();
     const strip = await screen.findByRole("region", { name: /Booking load for dinner/ });
-    expect(strip).toHaveClass("overflow-x-auto", "snap-x", "touch-pan-x");
+    expect(strip).toHaveClass("overflow-x-auto", "snap-x", "overscroll-x-contain");
     expect(strip.querySelectorAll('[data-testid^="floor-slot-"]')).toHaveLength(16);
     expect(strip.querySelectorAll('[data-testid^="floor-slot-"]')[0]).toHaveClass("shrink-0", "snap-start");
     expect(screen.getByText("18:45")).toBeInTheDocument();
