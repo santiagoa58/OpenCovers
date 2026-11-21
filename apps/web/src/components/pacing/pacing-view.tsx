@@ -1,4 +1,5 @@
-import { GaugeIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, GaugeIcon } from "lucide-react";
 import { cn } from "cn";
 import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
@@ -37,7 +38,6 @@ export function PacingView({
   onSelectTime: (time: string) => void;
 }) {
   const t = useT();
-  const displayTime = useTimeDisplay();
   const nav = useNavigation();
   const { data, isPending, isError, error, isRefetching, refetch } = usePacing(venueId, date);
 
@@ -71,39 +71,15 @@ export function PacingView({
         />
       ) : (
         <>
-          {pacing.map((service) => {
-            const peak = peakSlot(service.slots);
-            return (
-              <section key={service.service} className="space-y-2">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-1">
-                  <h3 className="font-display text-lg first-letter:uppercase">{service.service}</h3>
-                  <span className="text-sm text-muted-foreground tabular-nums">
-                    {peak
-                      ? t("pacing.peak", { covers: peak.covers, capacity: peak.capacity, time: displayTime(peak.time) })
-                      : t("pacing.nothingBooked")}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-5 rounded-xl border bg-card p-4">
-                  {groupByHour(service.slots).map((hour) => (
-                    <div
-                      key={hour[0].time}
-                      className="grid gap-1.5"
-                      style={{ gridTemplateColumns: `repeat(${hour.length}, 3rem)` }}
-                    >
-                      {hour.map((slot) => (
-                        <SlotColumn
-                          key={slot.time}
-                          slot={slot}
-                          selected={slot.time === time}
-                          onSelectTime={onSelectTime}
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+          {pacing.map((service) => (
+            <ServiceTimeline
+              key={service.service}
+              name={service.service}
+              slots={service.slots}
+              selectedTime={time}
+              onSelectTime={onSelectTime}
+            />
+          ))}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-sm text-muted-foreground">
             <Legend level="low" label={t("pacing.level.low")} hint={t("pacing.hint.low", { percent: MEDIUM_FROM * 100 })} />
             <Legend
@@ -119,15 +95,122 @@ export function PacingView({
   );
 }
 
-/** Slots grouped by the hour they start in, so a long service wraps into rows instead of scrolling. */
-function groupByHour(slots: PacingSlot[]): PacingSlot[][] {
-  const groups: PacingSlot[][] = [];
-  for (const slot of slots) {
-    const last = groups[groups.length - 1];
-    if (last && last[0].time.slice(0, 2) === slot.time.slice(0, 2)) last.push(slot);
-    else groups.push([slot]);
-  }
-  return groups;
+/**
+ * A single timeline is easier to scan than wrapping each hour into disconnected rows.
+ * The viewport stays a normal horizontal scroll area on touch devices, with buttons
+ * for mouse and keyboard users. Only this strip scrolls, never the entire page.
+ */
+function ServiceTimeline({
+  name,
+  slots,
+  selectedTime,
+  onSelectTime,
+}: {
+  name: string;
+  slots: PacingSlot[];
+  selectedTime: string;
+  onSelectTime: (time: string) => void;
+}) {
+  const t = useT();
+  const displayTime = useTimeDisplay();
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [canScrollBack, setCanScrollBack] = useState(false);
+  const [canScrollForward, setCanScrollForward] = useState(false);
+  const peak = peakSlot(slots);
+
+  const updateScrollState = useCallback(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    setCanScrollBack(strip.scrollLeft > 1);
+    setCanScrollForward(strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+    return () => window.removeEventListener("resize", updateScrollState);
+  }, [slots, updateScrollState]);
+
+  // Keep the selected floor snapshot in view, including after a URL reload or time-picker change.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const selected = strip?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!strip || !selected) return;
+    strip.scrollLeft = Math.max(0, selected.offsetLeft - (strip.clientWidth - selected.offsetWidth) / 2);
+    updateScrollState();
+  }, [selectedTime, slots, updateScrollState]);
+
+  const scroll = (direction: -1 | 1) => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const distance = Math.max(150, strip.clientWidth * 0.7) * direction;
+    if (typeof strip.scrollBy === "function") {
+      strip.scrollBy({ left: distance, behavior: "smooth" });
+    } else {
+      strip.scrollLeft += distance;
+      updateScrollState();
+    }
+  };
+
+  return (
+    <section className="min-w-0 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1">
+        <h3 className="font-display text-lg first-letter:uppercase">{name}</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {peak
+              ? t("pacing.peak", { covers: peak.covers, capacity: peak.capacity, time: displayTime(peak.time) })
+              : t("pacing.nothingBooked")}
+          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              className="size-11 sm:size-9"
+              aria-label={t("pacing.scrollEarlier")}
+              disabled={!canScrollBack}
+              onClick={() => scroll(-1)}
+            >
+              <ChevronLeftIcon aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              className="size-11 sm:size-9"
+              aria-label={t("pacing.scrollLater")}
+              disabled={!canScrollForward}
+              onClick={() => scroll(1)}
+            >
+              <ChevronRightIcon aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      <div className="min-w-0 rounded-xl border bg-card px-2 pt-3 pb-2 sm:px-3">
+        <div
+          ref={stripRef}
+          role="region"
+          aria-label={t("pacing.scrollRegion", { service: name })}
+          tabIndex={0}
+          onScroll={updateScrollState}
+          data-testid="booking-load-strip"
+          className="relative flex min-w-0 snap-x snap-proximity gap-1.5 overflow-x-auto overscroll-x-contain rounded-md px-1 pt-1 pb-3 focus-visible:outline-2 focus-visible:outline-primary sm:gap-2"
+        >
+          {slots.map((slot) => (
+            <SlotColumn
+              key={slot.time}
+              slot={slot}
+              selected={slot.time === selectedTime}
+              onSelectTime={onSelectTime}
+            />
+          ))}
+        </div>
+      </div>
+      <p className="px-1 text-xs text-muted-foreground sm:hidden">{t("pacing.scrollHint")}</p>
+    </section>
+  );
 }
 
 function SlotColumn({
@@ -152,12 +235,12 @@ function SlotColumn({
       aria-label={t("pacing.slotTitle", { time: displayTime(slot.time), covers: slot.covers, capacity: slot.capacity })}
       onClick={() => onSelectTime(slot.time)}
       className={cn(
-        "flex flex-col items-center gap-1.5 rounded-md p-1 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary",
+        "flex w-[4.5rem] shrink-0 snap-start flex-col items-center gap-1 rounded-lg p-1.5 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary sm:w-[4.75rem]",
         selected && "bg-primary/10 ring-2 ring-primary",
       )}
       title={t("pacing.slotTitle", { time: displayTime(slot.time), covers: slot.covers, capacity: slot.capacity })}
     >
-      <div className="flex h-20 w-full items-end overflow-hidden rounded-md bg-muted/60">
+      <div className="flex h-[4.75rem] w-full items-end overflow-hidden rounded-md bg-muted/60 sm:h-20">
         {slot.covers > 0 && (
           <div
             className={cn("w-full rounded-md transition-[height]", style.bar)}
@@ -165,10 +248,10 @@ function SlotColumn({
           />
         )}
       </div>
-      <div className={cn("text-xs font-semibold tabular-nums", style.text)}>
+      <div className={cn("whitespace-nowrap text-xs font-semibold tabular-nums", style.text)}>
         {slot.covers}/{slot.capacity}
       </div>
-      <div className="text-[11px] text-muted-foreground tabular-nums">{displayTime(slot.time)}</div>
+      <div className="whitespace-nowrap text-[11px] leading-4 text-muted-foreground tabular-nums">{displayTime(slot.time)}</div>
     </button>
   );
 }

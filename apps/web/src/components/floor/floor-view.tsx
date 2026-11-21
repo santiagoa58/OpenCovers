@@ -60,24 +60,22 @@ export function FloorView({ venueId }: { venueId: string }) {
   return (
     <div className="space-y-8 print:space-y-0">
       <div data-testid="floor-controls" className="print:hidden">
-        <PageHeader
-          title={t("floor.title")}
-          description={t("floor.intro")}
-          actions={
-            <>
-              <DayNav date={date} onChange={setDate} showToday={false} />
-              <TimeField label={t("floor.time")} value={time} onChange={setTime} />
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setUrlParams({ date: todayIso(), time: nowTime() });
-                }}
-              >
-                {t("floor.now")}
-              </Button>
-            </>
-          }
-        />
+        <PageHeader title={t("floor.title")} description={t("floor.intro")} />
+        <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" data-testid="floor-filter-bar">
+          <DayNav date={date} onChange={setDate} showToday={false} />
+          <div className="flex min-w-0 items-center gap-2">
+            <TimeField label={t("floor.time")} value={time} onChange={setTime} />
+            <Button
+              variant="outline"
+              className="shrink-0 px-3"
+              onClick={() => {
+                setUrlParams({ date: todayIso(), time: nowTime() });
+              }}
+            >
+              {t("floor.now")}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div data-testid="floor-pacing" className="print:hidden">

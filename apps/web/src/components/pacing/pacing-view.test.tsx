@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PacingView } from "./pacing-view";
 import { useUiStore } from "@/stores/ui-store";
@@ -75,7 +75,43 @@ describe("PacingView", () => {
     expect(await screen.findByText("Peak 4/10 at 8:00 PM")).toBeInTheDocument();
     expect(screen.getByText("8:00 PM")).toBeInTheDocument();
     expect(screen.getByTitle("8:00 PM — 4/10 covers")).toBeInTheDocument();
+    expect(screen.getByText("8:00 PM")).toHaveClass("whitespace-nowrap");
     expect(screen.queryByText("20:00")).not.toBeInTheDocument();
+  });
+
+  it("keeps a long service in a single horizontal strip instead of wrapping each hour", async () => {
+    const slots = Array.from({ length: 16 }, (_, i) => ({
+      time: `${String(15 + Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`,
+      capacity: 100,
+      covers: 10 + i,
+    }));
+    mockPacing([{ service: "dinner", slots }]);
+    renderView();
+    const strip = await screen.findByRole("region", { name: /Booking load for dinner/ });
+    expect(strip).toHaveClass("overflow-x-auto", "snap-x", "overscroll-x-contain");
+    expect(strip.querySelectorAll('[data-testid^="floor-slot-"]')).toHaveLength(16);
+    expect(strip.querySelectorAll('[data-testid^="floor-slot-"]')[0]).toHaveClass("shrink-0", "snap-start");
+    expect(screen.getByText("18:45")).toBeInTheDocument();
+    expect(screen.getByText("Swipe sideways to see other times")).toBeInTheDocument();
+  });
+
+  it("offers keyboard-accessible previous and next controls for horizontal scrolling", async () => {
+    mockPacing([{ service: "dinner", slots: [
+      { time: "20:00", capacity: 100, covers: 20 },
+      { time: "20:15", capacity: 100, covers: 24 },
+    ] }]);
+    renderView();
+    const strip = await screen.findByRole("region", { name: /Booking load for dinner/ });
+    Object.defineProperty(strip, "scrollWidth", { configurable: true, value: 900 });
+    Object.defineProperty(strip, "clientWidth", { configurable: true, value: 300 });
+    fireEvent.scroll(strip);
+    const earlier = screen.getByRole("button", { name: "Earlier times" });
+    const later = screen.getByRole("button", { name: "Later times" });
+    expect(earlier).toBeDisabled();
+    expect(later).toBeEnabled();
+    fireEvent.click(later);
+    expect(strip.scrollLeft).toBeGreaterThan(0);
+    expect(earlier).toBeEnabled();
   });
 
 });
