@@ -29,21 +29,28 @@ app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
   const parsed = venueConfigSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return sendError(c, "invalid_request");
   const body = parsed.data;
-  const phoneCountry = body.phoneCountry == null ? body.phoneCountry : toCountryCode(body.phoneCountry);
-  if (body.phoneCountry != null && !phoneCountry) return sendError(c, "invalid_request");
+  // Omitting a field preserves its current value. Explicit null is supported only for nullable settings.
+  let phoneCountry = undefined as ReturnType<typeof toCountryCode> | undefined;
+  if (body.phoneCountry === null) {
+    phoneCountry = null;
+  } else if (body.phoneCountry !== undefined) {
+    phoneCountry = toCountryCode(body.phoneCountry);
+    if (phoneCountry === null) return sendError(c, "invalid_request");
+  }
 
-  // Scheduling semantics and calendar normalization stay in their domain utilities.
-  const turnTimes = body.turnTimes === undefined ? undefined : parseTurnTimes(body.turnTimes);
-  if (turnTimes === null) return sendError(c, "invalid_request");
-  const blockedDates = body.blockedDates === undefined ? undefined : parseBlockedDates(body.blockedDates);
-  if (blockedDates === null) return sendError(c, "invalid_request");
+  // Normalize only supplied fields. Empty arrays clear schedules; invalid arrays never reach the database.
+  if (body.turnTimes !== undefined) {
+    const normalized = parseTurnTimes(body.turnTimes);
+    if (normalized === null) return sendError(c, "invalid_request");
+    body.turnTimes = normalized;
+  }
+  if (body.blockedDates !== undefined) {
+    const normalized = parseBlockedDates(body.blockedDates);
+    if (normalized === null) return sendError(c, "invalid_request");
+    body.blockedDates = normalized;
+  }
 
-  const result = await setConfig(db, venueId, {
-    ...body,
-    phoneCountry,
-    turnTimes,
-    blockedDates,
-  });
+  const result = await setConfig(db, venueId, { ...body, phoneCountry });
   if (!result.ok) return sendError(c, result.code);
   return c.json(result.config);
 });
