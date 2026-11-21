@@ -382,7 +382,7 @@ describe("FloorView", () => {
     });
     renderWithApp(<FloorView venueId="v1" />);
     const warning = await screen.findByTestId("floor-planning-conflicts");
-    expect(warning).toHaveTextContent("1 table turns conflict with 90-minute seating");
+    expect(warning).toHaveTextContent("1 overlapping table reservation");
     await userEvent.click(warning.querySelector("summary")!);
     expect(warning).toHaveTextContent("First Guest");
     expect(warning).toHaveTextContent("Next Guest");
@@ -404,12 +404,12 @@ describe("FloorView", () => {
     });
     renderWithApp(<FloorView venueId="v1" />);
     const warning = await screen.findByTestId("floor-planning-conflicts");
-    expect(warning).toHaveTextContent("1 shorter bookings · 1 immediate table turns");
+    expect(warning).toHaveTextContent("Reservation timing details");
     await userEvent.click(warning.querySelector("summary")!);
-    expect(warning).toHaveTextContent("Exceptions to the reservation length");
+    expect(warning).toHaveTextContent("Bookings shorter than the standard time");
     expect(warning).toHaveTextContent("First Guest");
-    expect(warning).toHaveTextContent("60 minutes (default 90)");
-    expect(warning).toHaveTextContent("Back-to-back table turnovers");
+    expect(warning).toHaveTextContent("60 minutes booked (usual 90)");
+    expect(warning).toHaveTextContent("Back-to-back table bookings");
     expect(warning).toHaveTextContent("Next Guest");
     expect(screen.queryByTestId("floor-actual-conflicts")).not.toBeInTheDocument();
     expect(screen.queryByTestId("floor-peak-parties-warning")).not.toBeInTheDocument();
