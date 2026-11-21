@@ -25,6 +25,7 @@ import { formatDays } from "@/lib/weekdays";
 import { ServiceFormDialog } from "./service-form-dialog";
 import { TableFormDialog } from "./table-form-dialog";
 import { VenueSettings } from "./venue-settings";
+import { TimeFormatSettings } from "./time-format-settings";
 import { BookingPolicyCard } from "./booking-policy-card";
 import { PublicProfileCard } from "./public-profile-card";
 import { OnlineBookingCard } from "./online-booking-card";
@@ -177,6 +178,7 @@ export function SetupView({ venueId, role }: { venueId: string; role?: Role }) {
       case "venue":
         return (
           <>
+            <TimeFormatSettings />
             <VenueSettings venueId={venueId} role={role} />
             <BookingPolicyCard venueId={venueId} role={role} />
           </>
