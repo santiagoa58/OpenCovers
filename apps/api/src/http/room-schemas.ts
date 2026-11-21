@@ -8,7 +8,7 @@ const layoutFields = {
   rotation: layoutCoordinate.optional(),
 };
 
-export const floorItemSchema = z.object({
+export const floorItemSchema = z.strictObject({
   type: z.string().min(1),
   label: z.string().optional(),
   posX: layoutCoordinate.optional(),
@@ -17,13 +17,13 @@ export const floorItemSchema = z.object({
   height: layoutCoordinate.optional(),
 });
 
-export const floorItemLayoutSchema = z.object({
+export const floorItemLayoutSchema = z.strictObject({
   ...layoutFields,
   width: layoutCoordinate.optional(),
   height: layoutCoordinate.optional(),
 });
 
-export const tableSchema = z.object({
+export const tableSchema = z.strictObject({
   id: z.string().min(1),
   name: z.string(),
   seats: z.number().int().min(1),
@@ -31,11 +31,11 @@ export const tableSchema = z.object({
   shape: z.string().optional(),
 });
 
-export const tableLayoutSchema = z.object(layoutFields);
+export const tableLayoutSchema = z.strictObject(layoutFields);
 
 const weekdaysSchema = z.array(z.number().int().min(1).max(7)).min(1).max(7);
 
-export const serviceSchema = z.object({
+export const serviceSchema = z.strictObject({
   name: z.string().min(1),
   openStart: z.string(),
   openEnd: z.string(),
