@@ -508,9 +508,11 @@ export const api = {
     venueId: string,
     id: string,
     body: {
+      date?: string;
+      time?: string;
       partySize?: number;
       tables?: string[];
-      guest?: { consent?: Consent };
+      guest?: { name?: string; consent?: Consent };
       rating?: number | null;
       commentary?: string;
     },
