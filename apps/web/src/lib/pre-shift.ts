@@ -22,9 +22,16 @@ export function buildPreShift(
   tables: Table[],
   service: string | null,
 ): PreShiftRow[] {
+  return buildReservationRows(
+    reservations.filter((r) => UPCOMING.has(r.status) && (service === null || r.service === service)),
+    tables,
+  );
+}
+
+/** Shared display shape for full-day reports and selected-time briefings. */
+export function buildReservationRows(reservations: Reservation[], tables: Table[]): PreShiftRow[] {
   const names = new Map(tables.map((t) => [t.id, t.name]));
   return reservations
-    .filter((r) => UPCOMING.has(r.status) && (service === null || r.service === service))
     .map((reservation) => ({
       reservation,
       tableNames: (reservation.tables ?? []).map((id) => names.get(id) ?? id),

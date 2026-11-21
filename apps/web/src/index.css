@@ -186,3 +186,35 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Print reports live in their own root, outside the dashboard and modal.
+   Isolate only this print job; the browser's other printing uses normal rules. */
+@media print {
+  body.reservation-print-active {
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+  body.reservation-print-active > :not([data-reservation-print-root]) {
+    display: none !important;
+  }
+  body.reservation-print-active > [data-reservation-print-root] {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    color: #111 !important;
+    background: #fff !important;
+  }
+  body.reservation-print-active > [data-reservation-print-root] * {
+    color: #111 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  [data-reservation-print-root] thead {
+    display: table-header-group;
+  }
+  [data-reservation-print-root] tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
