@@ -24,6 +24,7 @@ import {
 import { auth, mcpRemote, trustedOrigins } from "./lib/auth";
 import { getReservationTrace } from "./lib/reservation-trace";
 import { registerRoomRoutes } from "./http/room-routes";
+import type { AppEnv } from "./http/types";
 import { registerVenueSettingsRoutes } from "./http/venue-settings-routes";
 import { staffOriginGuard } from "./lib/staff-origin";
 import { CHANNEL_HEADER, keyOrigin, sessionOrigin, WIDGET, type Origin } from "./lib/origin";
@@ -154,14 +155,6 @@ import {
   listWaitlist,
   seatWaitlist,
 } from "./lib/waitlist";
-
-export type AppEnv = {
-  Variables: {
-    principal: string;
-    role: string;
-    origin: Origin;
-  };
-};
 
 const app = new Hono<AppEnv>();
 const challengeConfig = challengeConfigFromEnv();
