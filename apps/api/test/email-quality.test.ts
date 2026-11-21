@@ -2,9 +2,8 @@
 // kind in every shipped locale, with a full venue, a bare one, no venue and a hostile one, and checks the facts, the
 // markup rules, the colors, the size and the calendar file. A new locale or a new kind lands in these loops on its own.
 import { describe, expect, it } from "vitest";
-import { magicLinkEmail } from "../src/lib/auth";
 import { accentFor, BODY_PX, DARK, DEFAULT_ACCENT, LIGHT } from "../src/lib/email-layout";
-import { EMAIL_CATALOGS, MAGIC_LINK_CATALOGS, formatEmailDay, message, partyLabel } from "../src/lib/email-messages";
+import { EMAIL_CATALOGS, formatEmailDay, message, partyLabel } from "../src/lib/email-messages";
 import { emailVenue, type EmailVenue } from "../src/lib/email-venue";
 import { buildEmail, buildLinkEmail, buildWaitlistJoinEmail, GUEST_MANAGE_LINK_ENABLED, MAX_SUBJECT_LENGTH, type BuiltEmail } from "../src/lib/mailer";
 import { contrast } from "../src/lib/contrast";
@@ -48,7 +47,7 @@ interface Case {
   name: string;
   locale: string;
   mail: BuiltEmail;
-  /** The facts the text must carry. Empty for mail with no booking (the sign-in link). */
+  /** The booking facts the text must carry. */
   facts: string[];
   /** Whether the mail is a booking mail with a calendar entry. */
   calendar: "PUBLISH" | "CANCEL" | null;
@@ -93,9 +92,6 @@ function cases(): Case[] {
     }
     // A booking with no calendar data still builds.
     out.push({ name: `${locale} confirmation without booking`, locale, mail: buildEmail("confirmation", { ...base, venue: full }, locale), facts, calendar: null });
-  }
-  for (const l of ["es", "en"]) {
-    out.push({ name: `${l} magic link`, locale: l, mail: magicLinkEmail(l, "https://demo.opencovers.dev/api/auth/magic-link/verify?token=abc&callbackURL=%2F") as BuiltEmail, facts: [], calendar: null });
   }
   return out;
 }
@@ -435,10 +431,9 @@ describe("catalog copy", () => {
   });
 
   it("writes Spanish with its accents", () => {
-    const es = Object.values(EMAIL_CATALOGS.es!).join("\n") + Object.values(MAGIC_LINK_CATALOGS.es).join("\n");
+    const es = Object.values(EMAIL_CATALOGS.es!).join("\n");
     for (const wrong of [/\bDia\b/, /\bAnadir\b/, /\bCancelacion\b/, /pedido tu,/, /\bConfirmacion\b/, /\bTelefono\b/, /\bDonde\b/]) {
       expect(es).not.toMatch(wrong);
     }
-    expect(MAGIC_LINK_CATALOGS.es.outro).toBe("Si no lo has pedido tú, ignora este mensaje.");
   });
 });
