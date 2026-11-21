@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api, type Reservation } from "@/lib/api";
 import { useT } from "@/i18n";
 import { longDate } from "@/lib/date";
+import { useTimeDisplay } from "@/lib/time-format";
 import { guestsText } from "./guests-text";
 
 const OPEN_DELAY = 250;
@@ -203,6 +204,7 @@ function CardBody({
   onMoveRequest?: () => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const { data, isPending, isError } = useQuery({
     queryKey: ["reservation", venueId, reservationId],
     queryFn: () => api.getReservation(venueId, reservationId),
@@ -242,7 +244,7 @@ function CardBody({
       ) : (
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
           <Row label={t("floor.card.when")}>
-            {longDate(r.date)} · {r.time}
+            {longDate(r.date)} · {displayTime(r.time)}
           </Row>
           <Row label={t("floor.card.service")}>{r.service || "—"}</Row>
           <Row label={t("floor.card.status")}>

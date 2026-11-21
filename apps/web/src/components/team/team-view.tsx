@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, type Invitation, type InvitationStatus, type Member } from "@/lib/api";
-import { dateTime } from "@/lib/date";
+import { useDateTimeDisplay } from "@/lib/time-format";
 import { errorMessage } from "@/lib/error-message";
 import { t, useT } from "@/i18n";
 import { AuditLog } from "./audit-log";
@@ -42,11 +42,11 @@ const STATUS_TONE: Record<InvitationStatus, PillTone> = {
   expired: "warning",
 };
 
-function invitationDate(i: Invitation): string {
-  if (i.status === "redeemed" && i.redeemedAt) return t("team.invitations.date.redeemed", { when: dateTime(i.redeemedAt) });
-  if (i.status === "revoked" && i.revokedAt) return t("team.invitations.date.revoked", { when: dateTime(i.revokedAt) });
+function invitationDate(i: Invitation, displayDateTime: (iso: string) => string): string {
+  if (i.status === "redeemed" && i.redeemedAt) return t("team.invitations.date.redeemed", { when: displayDateTime(i.redeemedAt) });
+  if (i.status === "revoked" && i.revokedAt) return t("team.invitations.date.revoked", { when: displayDateTime(i.revokedAt) });
   return t(i.status === "pending" ? "team.invitations.date.expires" : "team.invitations.date.expired", {
-    when: dateTime(i.expiresAt),
+    when: displayDateTime(i.expiresAt),
   });
 }
 
@@ -207,6 +207,7 @@ function MembersCard({ venueId }: { venueId: string }) {
 
 function InvitationsCard({ venueId }: { venueId: string }) {
   const t = useT();
+  const displayDateTime = useDateTimeDisplay();
   const queryClient = useQueryClient();
   const { data, isPending, isError, error, isRefetching, refetch } = useQuery({
     queryKey: ["invitations", venueId],
@@ -250,7 +251,7 @@ function InvitationsCard({ venueId }: { venueId: string }) {
                 <div className="min-w-0">
                   <div className="truncate font-medium">{i.email ?? t("team.invitations.openLink")}</div>
                   <div className="text-sm text-muted-foreground">
-                    {invitationDate(i)}
+                    {invitationDate(i, displayDateTime)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
