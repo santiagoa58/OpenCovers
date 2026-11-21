@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# New PR commits cancel obsolete checks; production main/deploy runs are not cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Run type checks independently of tests so the slow database suite does not
   # block quick feedback about TypeScript errors.
