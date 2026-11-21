@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { Pill } from "@/components/pill";
-import { Group, SaveBar } from "./form-parts";
+import { SaveBar } from "./form-parts";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,12 +20,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadError } from "@/components/load-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n";
 import { useOnlineBooking } from "@/hooks/use-online-booking";
 import { useServices } from "@/hooks/use-services";
@@ -38,6 +36,7 @@ import {
   parseForm,
   toForm,
   type OnlineBookingForm,
+  type FormErrors,
   type ThemeForm,
 } from "@/lib/online-booking";
 import { OnlineBookingThemeEditor } from "./online-booking-theme-editor";
