@@ -84,10 +84,14 @@ app.post("/v1/venues/:venueId/services", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
   const parsed = serviceSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return sendError(c, "invalid_request");
-  // The catalog keeps the existing uniqueness check and weekday ordering.
-  const days = parsed.data.days === undefined ? undefined : parseDays(parsed.data.days);
-  if (days === null) return sendError(c, "invalid_request");
-  const upserted = await upsertService(db, venueId, { ...parsed.data, days });
+  const input = parsed.data;
+  if (input.days !== undefined) {
+    // Normalize weekday order and reject duplicates only when days were supplied.
+    const days = parseDays(input.days);
+    if (days === null) return sendError(c, "invalid_request");
+    input.days = days;
+  }
+  const upserted = await upsertService(db, venueId, input);
   if (!upserted.ok) return sendError(c, upserted.code);
   const services = await listServices(db, venueId);
   return c.json({ services });
