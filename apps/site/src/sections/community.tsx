@@ -95,6 +95,7 @@ export function Footer() {
     <footer className="foot">
       <div className="mark" aria-label="OpenCovers" role="img">
         {"OpenCovers".split("").map((ch, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: This fixed brand lettering is never reordered.
           <span key={i} aria-hidden style={{ "--c": markColors[i], "--h": `${markHeights[i]}%` } as CSSProperties}>
             {ch}
           </span>
