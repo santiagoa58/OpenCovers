@@ -58,7 +58,7 @@ describe("links into Settings sections", () => {
     show("admin");
     await user.click(await screen.findByRole("button", { name: "link services" }));
     expect(await screen.findByRole("tab", { name: "Dining room", selected: true })).toBeInTheDocument();
-    expect(window.location.search).toBe("?section=room");
+    expect(window.location.search).toBe("?view=setup&section=room");
     await waitFor(
       () => expect(scroll.mock.contexts.some((el) => (el as HTMLElement).id === "settings-services")).toBe(true),
       { timeout: 2_000 },

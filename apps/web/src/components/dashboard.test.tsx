@@ -32,6 +32,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   resetApiMocks();
+    window.history.replaceState(null, "", "/");
   document.title = "OpenCovers";
 });
 

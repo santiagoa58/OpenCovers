@@ -42,7 +42,10 @@ function setup2(explain: { status?: number; body?: unknown } = {
 }
 
 describe("AvailabilityView", () => {
-  afterEach(resetApiMocks);
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+    resetApiMocks();
+  });
 
   it("lists each service's slots, counts the free ones and keeps the taken ones clickable", async () => {
     setup();

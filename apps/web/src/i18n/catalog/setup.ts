@@ -17,7 +17,7 @@ export default defineMessages({
     "setup.display.title": "Display preferences",
     "setup.display.description": "Your view of times on this device. Does not change reservation times.",
     "setup.display.timeFormat": "Time format",
-    "setup.display.timeHelp": "Applies to reservations, availability, pacing and service hours.",
+    "setup.display.timeHelp": "Applies to reservation details, booking load, availability and service hours.",
     "setup.display.12h": "12-hour (4:15 PM)",
     "setup.display.24h": "24-hour (16:15)",
     "setup.row.edit": "Edit {name}",
