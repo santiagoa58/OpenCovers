@@ -155,27 +155,16 @@ describe("PreShiftView", () => {
     );
     expect(await screen.findByText("Could not load reservation details")).toBeInTheDocument();
     expect(screen.queryByText("No matching reservations")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Print" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
     expect(api.calls("GET", "/v1/venues/v1/reservations/missing")).toHaveLength(1);
     await (await import("@testing-library/user-event")).default.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(api.calls("GET", "/v1/venues/v1/reservations/missing").length).toBeGreaterThan(1));
   });
 
-  it("prints only when reservation details are ready", async () => {
+  it("keeps reservation details print-ready without a duplicate print control", async () => {
     setup([reservation()]);
-    const print = vi.fn();
-    vi.stubGlobal("print", print);
     await screen.findByText("Jane Doe");
-    const user = (await import("@testing-library/user-event")).default.setup();
-    await user.click(screen.getByRole("button", { name: "Print" }));
-    expect(screen.getByRole("dialog", { name: "Print reservations" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Selected time" })).toBeChecked();
-    await user.click(screen.getByRole("button", { name: "Print list" }));
-    expect(print).toHaveBeenCalledOnce();
-    expect(document.querySelector("[data-reservation-print-root]")).toHaveTextContent("Jane Doe");
-    expect(document.body).toHaveClass("reservation-print-active");
-    window.dispatchEvent(new Event("afterprint"));
-    expect(document.body).not.toHaveClass("reservation-print-active");
+    expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Reservation details" }).closest("section"))
       .toHaveAttribute("data-print-target", "reservation-details");
   });

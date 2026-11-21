@@ -1,9 +1,6 @@
-import { ClipboardListIcon, MessageSquareTextIcon, PrinterIcon, StarIcon } from "lucide-react";
-import { useState } from "react";
-import { PrintReservationsDialog } from "@/components/printing/print-reservations-dialog";
+import { ClipboardListIcon, MessageSquareTextIcon, StarIcon } from "lucide-react";
 import { useQueries } from "@tanstack/react-query";
 import { cn } from "cn";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
 import { Pill, type PillTone } from "@/components/pill";
@@ -38,7 +35,6 @@ export function PreShiftView({
 }) {
   const t = useT();
   const displayTime = useTimeDisplay();
-  const [printOpen, setPrintOpen] = useState(false);
   const agenda = useAgenda(venueId, date);
   const pacing = usePacing(venueId, date);
   const tables = useTables(venueId);
@@ -95,26 +91,8 @@ export function PreShiftView({
             {longDate(date)} · {displayTime(time)}
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="print:hidden"
-          onClick={() => setPrintOpen(true)}
-        >
-          <PrinterIcon />
-          {t("preshift.print")}
-        </Button>
+ 
       </div>
-
-      {printOpen && (
-        <PrintReservationsDialog
-          venueId={venueId}
-          date={date}
-          initialScope="time"
-          initialTime={time}
-          floorTables={floorTables}
-          onClose={() => setPrintOpen(false)}
-        />
-      )}
 
       {agenda.isPending || missingPending ? (
         <div className="space-y-3">

@@ -320,4 +320,38 @@ describe("FloorView", () => {
     expect(screen.getByTestId("floor-selected-time")).toHaveTextContent("Viewing");
   });
 
+  it("opens printing from the Floor header and can print the entire day rather than the current snapshot", async () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-21&time=16%3A45");
+    mockApi({
+      [FLOOR]: { body: { tables: [table()] } },
+      [ITEMS]: { body: { items: [] } },
+      "GET /v1/venues/v1/tables": { body: { tables: [] } },
+      "GET /v1/venues/v1/pacing": { body: { pacing: [
+        { service: "Dinner", slots: [
+          { time: "16:30", covers: 2, capacity: 10 },
+          { time: "16:45", covers: 2, capacity: 10 },
+        ] },
+      ] } },
+      "GET /v1/venues/v1/agenda": { body: { reservations: [
+        { id: "earlier", date: "2026-11-21", status: "booked", time: "16:30", partySize: 2, service: "Dinner", guest: { name: "Earlier Guest" } },
+        { id: "later", date: "2026-11-21", status: "booked", time: "16:45", partySize: 2, service: "Dinner", guest: { name: "Later Guest" } },
+      ] } },
+    });
+    renderWithApp(<FloorView venueId="v1" />);
+    const user = userEvent.setup();
+    await screen.findByTestId("floor-slot-16:45");
+    await user.click(screen.getByRole("button", { name: "Print" }));
+    expect(screen.getByRole("dialog", { name: "Print reservations" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Selected time" })).toBeChecked();
+    const sheet = document.querySelector("[data-reservation-print-root]");
+    await waitFor(() => expect(sheet).toHaveTextContent("Later Guest"));
+    expect(sheet).not.toHaveTextContent("Earlier Guest");
+
+    await user.click(screen.getByRole("radio", { name: "Full day" }));
+    expect(sheet).toHaveTextContent("Earlier Guest");
+    expect(sheet).toHaveTextContent("Later Guest");
+    expect(screen.queryAllByRole("button", { name: "Print" })).toHaveLength(1);
+    expect(window.location.search).toContain("time=16%3A45");
+  });
+
 });
