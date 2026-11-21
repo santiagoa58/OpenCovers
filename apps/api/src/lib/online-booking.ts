@@ -215,11 +215,20 @@ const INT_FIELDS = [
   ["maxOpenBookingsPerContact", 1, 20, true],
 ] as const;
 
-/** Parses a request body. Returns null when any present field is invalid. Absent fields stay absent, null resets. */
+const BOOLEAN_FIELDS = ["enabled", "askConsent", "showServiceNames", "waitlistEnabled"] as const;
+const INPUT_FIELDS = new Set([
+  ...BOOLEAN_FIELDS,
+  ...INT_FIELDS.map(([name]) => name),
+  "allowedOrigins", "services", "weekdays", "confirmationMode", "locale", "theme", "privacyNoticeUrl", "publicZones",
+]);
+
+/** Parses a request body. Returns null when invalid. Absent fields remain absent; null resets nullable settings. */
 export function parseOnlineBookingInput(body: unknown): OnlineBookingInput | null {
-  if (!isObject(body) || Object.keys(body).length === 0) return null;
+  if (!isObject(body) || Object.keys(body).length === 0 || Object.keys(body).some((key) => !INPUT_FIELDS.has(key))) {
+    return null;
+  }
   const out: OnlineBookingInput = {};
-  for (const key of ["enabled", "askConsent", "showServiceNames", "waitlistEnabled"] as const) {
+  for (const key of BOOLEAN_FIELDS) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") return null;
     out[key] = body[key];
