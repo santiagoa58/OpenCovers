@@ -27,7 +27,7 @@ import { LoadError } from "@/components/load-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useT, type MessageKey } from "@/i18n";
+import { useT } from "@/i18n";
 import { useOnlineBooking } from "@/hooks/use-online-booking";
 import { useServices } from "@/hooks/use-services";
 import { useTables } from "@/hooks/use-tables";
@@ -35,26 +35,20 @@ import { useVenues } from "@/hooks/use-venues";
 import { api } from "@/lib/api";
 import { errorMessage, isApiError } from "@/lib/error-message";
 import {
-  COLOR_KEYS,
-  FONTS,
-  FONT_STACKS,
   LOCALES,
   LOCALE_NAMES,
-  DEFAULT_DARK_COLORS,
   defaultThemeForm,
   embedSnippet,
-  isLogoUrl,
   parseForm,
   scriptSnippet,
   widgetOrigin,
   toForm,
-  type ColorKey,
-  type Font,
   type FormErrors,
   type OnlineBookingForm,
   type ThemeForm,
 } from "@/lib/online-booking";
 import { WEEKDAYS } from "@/lib/weekdays";
+import { OnlineBookingThemeEditor } from "./online-booking-theme-editor";
 
 type NumberKey =
   | "minPartySize"
@@ -64,74 +58,12 @@ type NumberKey =
   | "selfServiceCutoffMinutes"
   | "maxOpenBookingsPerContact";
 
-const COLOR_LABELS: Record<ColorKey, MessageKey> = {
-  primary: "onlinebooking.color.primary",
-  onPrimary: "onlinebooking.color.onPrimary",
-  background: "onlinebooking.color.background",
-  surface: "onlinebooking.color.surface",
-  text: "onlinebooking.color.text",
-  muted: "onlinebooking.color.muted",
-  border: "onlinebooking.color.border",
-};
-
-const FONT_LABELS: Record<Font, MessageKey> = {
-  system: "onlinebooking.font.system",
-  serif: "onlinebooking.font.serif",
-  rounded: "onlinebooking.font.rounded",
-};
-
 /** A translated sentence with `{name}` spots filled by elements (the `<code>` words that stay as they are). */
 function withCode(text: string, parts: Record<string, string>) {
   return text.split(/(\{\w+\})/).map((piece, i) => {
     const name = /^\{(\w+)\}$/.exec(piece)?.[1];
     return name && name in parts ? <code key={i}>{parts[name]}</code> : piece;
   });
-}
-
-/**
- * A small likeness of the booking page. The staff app's CSP loads no image from other sites, so a valid logo
- * address shows as a placeholder here and loads only in the widget.
- */
-function ThemePreview({
-  theme,
-  colors,
-  radiusText,
-  font,
-  label,
-}: {
-  theme: ThemeForm;
-  colors?: ThemeForm["colors"];
-  /** Overrides the corner radius, as text. Empty or absent keeps the theme's. */
-  radiusText?: string;
-  /** Overrides the font. Absent keeps the theme's. */
-  font?: Font;
-  label?: string;
-}) {
-  const t = useT();
-  const c = colors ?? theme.colors;
-  const radius = `${Math.min(24, Math.max(0, Number(radiusText?.trim() ? radiusText : theme.radius) || 0))}px`;
-  return (
-    <div
-      aria-label={label ?? t("onlinebooking.preview.label")}
-      role="img"
-      className="space-y-3 border p-4 text-sm"
-      style={{ background: c.background, color: c.text, fontFamily: FONT_STACKS[font ?? theme.font], borderColor: c.border, borderRadius: radius }}
-    >
-      {isLogoUrl(theme.logoUrl.trim()) && (
-        <div className="flex h-8 w-20 items-center justify-center border border-dashed text-xs" style={{ borderColor: c.border, color: c.muted }}>
-          {t("onlinebooking.preview.logo")}
-        </div>
-      )}
-      <p className="text-base font-semibold">{t("onlinebooking.preview.title")}</p>
-      <p style={{ color: c.muted }}>{t("onlinebooking.preview.pick")}</p>
-      <div className="border px-3 py-2" style={{ background: c.surface, borderColor: c.border, borderRadius: radius }}>
-        {t("onlinebooking.preview.sample", { count: 2 })}
-      </div>
-      <div className="px-3 py-2 text-center font-medium" style={{ background: c.primary, color: c.onPrimary, borderRadius: radius }}>
-        {t("onlinebooking.preview.book")}
-      </div>
-    </div>
-  );
 }
 
 /** A checkbox drawn as a pill. The real input stays in the page, so labels and the keyboard work as before. */
@@ -573,184 +505,14 @@ export function OnlineBookingCard({ venueId }: { venueId: string }) {
               </div>
             </Group>
 
-            <fieldset className="space-y-4">
-              <legend className="font-display text-lg">{t("onlinebooking.look.legend")}</legend>
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    {COLOR_KEYS.map((k) => (
-                      <div key={k} className="flex items-center gap-2">
-                        <input
-                          id={`ob-color-${k}`}
-                          type="color"
-                          value={form.theme.colors[k]}
-                          onChange={(e) => setTheme({ colors: { ...form.theme.colors, [k]: e.target.value } })}
-                          className="h-8 w-10 shrink-0 cursor-pointer rounded border border-input bg-transparent"
-                        />
-                        <Label htmlFor={`ob-color-${k}`} className="font-normal">
-                          {t(COLOR_LABELS[k])}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                  {error("themeColors")}
-                  <div className="space-y-3 rounded-lg border p-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <Label htmlFor="ob-dark-palette">{t("onlinebooking.dark.label")}</Label>
-                        <p className="text-sm text-muted-foreground">
-                          {t("onlinebooking.dark.help")}
-                        </p>
-                      </div>
-                      <Switch
-                        id="ob-dark-palette"
-                        checked={form.theme.darkColors !== null}
-                        onCheckedChange={(on) =>
-                          setTheme({ darkColors: on ? { ...DEFAULT_DARK_COLORS } : null })
-                        }
-                      />
-                    </div>
-                    {form.theme.darkColors && (
-                      <>
-                        <div className="grid grid-cols-2 gap-3">
-                          {COLOR_KEYS.map((k) => (
-                            <div key={k} className="flex items-center gap-2">
-                              <input
-                                id={`ob-dark-color-${k}`}
-                                type="color"
-                                value={form.theme.darkColors?.[k] ?? DEFAULT_DARK_COLORS[k]}
-                                onChange={(e) =>
-                                  setTheme({
-                                    darkColors: { ...DEFAULT_DARK_COLORS, ...form.theme.darkColors, [k]: e.target.value },
-                                  })
-                                }
-                                className="h-8 w-10 shrink-0 cursor-pointer rounded border border-input bg-transparent"
-                              />
-                              <Label htmlFor={`ob-dark-color-${k}`} className="font-normal">
-                                {t("onlinebooking.dark.color", { color: t(COLOR_LABELS[k]).toLowerCase() })}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                        {error("themeDarkColors")}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="ob-dark-radius">{t("onlinebooking.dark.radius")}</Label>
-                            <Input
-                              id="ob-dark-radius"
-                              inputMode="numeric"
-                              placeholder={t("onlinebooking.sameAsLight")}
-                              value={form.theme.darkRadius}
-                              aria-invalid={errors.themeDarkRadius ? true : undefined}
-                              aria-describedby={errors.themeDarkRadius ? "ob-themeDarkRadius-error" : undefined}
-                              onChange={(e) => setTheme({ darkRadius: e.target.value })}
-                            />
-                            {error("themeDarkRadius")}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="ob-dark-font">{t("onlinebooking.dark.font")}</Label>
-                            <select
-                              id="ob-dark-font"
-                              value={form.theme.darkFont}
-                              onChange={(e) => setTheme({ darkFont: e.target.value as Font | "" })}
-                              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                            >
-                              <option value="">{t("onlinebooking.sameAsLight")}</option>
-                              {FONTS.map((f) => (
-                                <option key={f} value={f}>
-                                  {t(FONT_LABELS[f])}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ob-radius">{t("onlinebooking.radius")}</Label>
-                      <Input
-                        id="ob-radius"
-                        inputMode="numeric"
-                        value={form.theme.radius}
-                        aria-invalid={errors.themeRadius ? true : undefined}
-                        aria-describedby={errors.themeRadius ? "ob-themeRadius-error" : undefined}
-                        onChange={(e) => setTheme({ radius: e.target.value })}
-                      />
-                      {error("themeRadius")}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ob-font">{t("onlinebooking.font")}</Label>
-                      <select
-                        id="ob-font"
-                        value={form.theme.font}
-                        onChange={(e) => setTheme({ font: e.target.value as Font })}
-                        className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                      >
-                        {FONTS.map((f) => (
-                          <option key={f} value={f}>
-                            {t(FONT_LABELS[f])}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ob-logo">{t("onlinebooking.logo.label")}</Label>
-                    <Input
-                      id="ob-logo"
-                      placeholder="https://example.com/logo.png" // i18n-ok
-                      value={form.theme.logoUrl}
-                      aria-invalid={errors.themeLogoUrl ? true : undefined}
-                      aria-describedby={errors.themeLogoUrl ? "ob-themeLogoUrl-error" : undefined}
-                      onChange={(e) => setTheme({ logoUrl: e.target.value })}
-                    />
-                    {error("themeLogoUrl")}
-                    <p className="text-sm text-muted-foreground">
-                      {t("onlinebooking.logo.help")}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setForm({ ...form, theme: defaultThemeForm() })}
-                  >
-                    {t("onlinebooking.resetLook")}
-                  </Button>
-                </div>
-                <div className="space-y-3 sm:sticky sm:top-36 sm:self-start">
-                  <ThemePreview theme={form.theme} />
-                  {form.theme.darkColors && (
-                    <ThemePreview
-                      theme={form.theme}
-                      colors={form.theme.darkColors}
-                      radiusText={form.theme.darkRadius}
-                      font={form.theme.darkFont || undefined}
-                      label={t("onlinebooking.preview.darkLabel")}
-                    />
-                  )}
-                </div>
-              </div>
-              {lowContrast !== null && (
-                <div
-                  role="alert"
-                  className="rounded-md border border-amber-500/60 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
-                >
-                  {t("onlinebooking.contrast.light", { ratio: lowContrast })}
-                </div>
-              )}
-              {lowContrastDark !== null && (
-                <div
-                  role="alert"
-                  className="rounded-md border border-amber-500/60 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
-                >
-                  {t("onlinebooking.contrast.dark", { ratio: lowContrastDark })}
-                </div>
-              )}
-            </fieldset>
-
+            <OnlineBookingThemeEditor
+              theme={form.theme}
+              errors={errors}
+              lowContrast={lowContrast}
+              lowContrastDark={lowContrastDark}
+              onThemeChange={setTheme}
+              onReset={() => setForm({ ...form, theme: defaultThemeForm() })}
+            />
 
             <div className="space-y-4 border-t pt-6">
               <h3 className="font-display text-lg">{t("onlinebooking.embed.title")}</h3>
