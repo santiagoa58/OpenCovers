@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { StaffNoteField } from "@/components/reservation/staff-note-field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { useTables } from "@/hooks/use-tables";
 import { useVenueConfig } from "@/hooks/use-venue-config";
 import { bookingMinutes } from "@/lib/planning-conflicts";
@@ -244,32 +245,25 @@ export function NewReservationDialog({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="guest-name">{t("reservation.guestName")}</Label>
+            <Field>
+              <FieldLabel htmlFor="guest-name">{t("reservation.guestName")}</FieldLabel>
               <Input id="guest-name" placeholder={t("reservation.guestNamePlaceholder")} {...register("name")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="guest-contact">{t("reservation.contact")}</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="guest-contact">{t("reservation.contact")}</FieldLabel>
               <Input
                 id="guest-contact"
                 placeholder="jane@example.com" // i18n-ok
                 {...register("contact")}
               />
-            </div>
+            </Field>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reservation-commentary">{t("reservation.note")}</Label>
-            <Textarea
-              id="reservation-commentary"
-              maxLength={COMMENTARY_MAX}
-              placeholder={t("reservation.notePlaceholder")}
-              {...register("commentary")}
-            />
-            <p className="text-sm text-muted-foreground">
-              {t("reservation.noteHint", { max: COMMENTARY_MAX })}
-            </p>
-          </div>
+          <StaffNoteField
+            id="reservation-commentary"
+            maxLength={COMMENTARY_MAX}
+            inputProps={register("commentary")}
+          />
 
           {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
 
