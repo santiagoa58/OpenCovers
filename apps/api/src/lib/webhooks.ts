@@ -3,7 +3,6 @@ import http from "node:http";
 import https from "node:https";
 import type { LookupFunction } from "node:net";
 import { and, asc, eq, inArray, lte, notInArray, sql } from "drizzle-orm";
-import { sandboxWebhooksBlocked } from "../demo/limits";
 import { events, venues, webhookEndpoints } from "../db/schema";
 import { getEvents, getEventsWatermark, type Db } from "./reservations";
 import {
@@ -91,7 +90,6 @@ export async function createWebhook(
   policy: TargetPolicy,
   createdBy: string | null = null,
 ): Promise<CreateWebhookResult> {
-  if (await sandboxWebhooksBlocked(db, venueId)) return { ok: false, code: "webhook_url_rejected" };
   const checked = await checkTarget(rawUrl, policy);
   if (!checked.ok) return { ok: false, code: "webhook_url_rejected" };
   const url = checked.target.url.href;
@@ -208,12 +206,6 @@ async function claimEndpoint(db: Db, now: Date, visited: Set<string>): Promise<C
 
 async function deliverEndpoint(db: Db, deps: DeliveryDeps, claim: Claim): Promise<void> {
   const { endpoint } = claim;
-  // A sandbox sends no webhooks (ADR-0022, decision 8e). Creation is refused, so this only meets an endpoint that
-  // reached a sandbox some other way: it is switched off and nothing is posted.
-  if (await sandboxWebhooksBlocked(db, endpoint.venueId)) {
-    await db.update(webhookEndpoints).set({ enabled: false }).where(eq(webhookEndpoints.id, endpoint.id));
-    return;
-  }
   let cursor = endpoint.lastEventId;
   let dropped: string | null = null;
   const watermark = await getEventsWatermark(db, endpoint.venueId);
