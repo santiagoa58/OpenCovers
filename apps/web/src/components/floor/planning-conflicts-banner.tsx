@@ -39,6 +39,9 @@ export function PlanningConflictsBanner({ venueId, date }: { venueId: string; da
   const capacityConflict = peakParties > tableCount;
   if (!conflicts.length && !turnovers.length && !exceptions.length && !capacityConflict) return null;
   const actualConflicts = conflicts.length > 0 || capacityConflict;
+  let summary = t("floor.planning.savedIssues");
+  if (capacityConflict) summary = t("floor.planning.capacityHeading");
+  else if (conflicts.length > 0) summary = t("floor.planning.conflicts", { count: conflicts.length });
 
   return (
     <details
@@ -51,13 +54,7 @@ export function PlanningConflictsBanner({ venueId, date }: { venueId: string; da
         {actualConflicts
           ? <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
           : <InfoIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
-        <span>
-          {capacityConflict
-            ? t("floor.planning.capacityHeading")
-            : conflicts.length > 0
-              ? t("floor.planning.conflicts", { count: conflicts.length })
-              : t("floor.planning.savedIssues")}
-        </span>
+        <span>{summary}</span>
       </summary>
 
       {actualConflicts && (
