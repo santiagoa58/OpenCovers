@@ -61,7 +61,7 @@ export const DEFAULT_ACCENT: EmailAccent = {
 };
 
 /** Email links and the PNG logo use the operator's publicly accessible staff-app origin. */
-export const SITE_URL = new URL(process.env.BETTER_AUTH_URL ?? "http://localhost:3000").origin;
+export const SITE_URL = new URL(process.env.BETTER_AUTH_URL ?? "https://opencovers.santimade.dev").origin;
 export const LOGO_URL = `${SITE_URL}/email-logo.png`;
 
 export const BODY_PX = 16;
