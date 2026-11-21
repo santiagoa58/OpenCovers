@@ -18,7 +18,7 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 /**
  * Whether the API is an OAuth authorization server. Off unless MCP_REMOTE=on. With it on, the API refuses to start
  * unless it can be one safely: an HTTPS public URL (plain HTTP only on a loopback host outside production), a real
- * BETTER_AUTH_SECRET, and no demo mode.
+ * BETTER_AUTH_SECRET.
  */
 export function mcpRemoteEnabled(env: Env = process.env): boolean {
   const value = env.MCP_REMOTE;
@@ -32,9 +32,6 @@ export function mcpRemoteEnabled(env: Env = process.env): boolean {
   }
   if (!env.BETTER_AUTH_SECRET || env.BETTER_AUTH_SECRET === DEV_AUTH_SECRET) {
     throw new Error("MCP_REMOTE=on needs BETTER_AUTH_SECRET. Generate one with openssl rand -base64 32.");
-  }
-  if (env.DEMO_MODE === "1") {
-    throw new Error("MCP_REMOTE=on is refused with DEMO_MODE=1: the hosted demo does not authorize agents.");
   }
   return true;
 }
