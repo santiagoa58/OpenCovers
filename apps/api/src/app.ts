@@ -1,5 +1,5 @@
 import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
-import { Hono, type MiddlewareHandler } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { and, eq } from "drizzle-orm";
 import { account as authAccounts } from "./db/schema";
 import { bodyLimit } from "hono/body-limit";
@@ -121,6 +121,8 @@ import {
   searchReservations,
   setStatus,
   walkIn,
+  type Reservation,
+  type WriteResult,
 } from "./lib/reservations";
 import { isConsent } from "./lib/consent";
 import { isCommentary } from "./lib/commentary";
@@ -174,7 +176,7 @@ app.use("*", createRateLimiter(rateLimitConfigFromEnv()).middleware);
 
 // Below the limiter, so an oversized body still spends the caller's budget. The widget's largest body is about
 // 2 KB and the staff app's (a config with 366 blocked date ranges) about 20 KB.
-const bodyTooLarge = (c: any) => error(c, "invalid_request");
+const bodyTooLarge = (c: Context<AppEnv>) => error(c, "invalid_request");
 app.use("/v1/public/*", bodyLimit({ maxSize: 16 * 1024, onError: bodyTooLarge }));
 app.use("*", bodyLimit({ maxSize: 256 * 1024, onError: bodyTooLarge }));
 app.use("/v1/*", staffOriginGuard(trustedOrigins));
@@ -282,9 +284,9 @@ const linkOrigin = widgetOrigin(widgetServing);
 
 // Self-service routes come before `/v1/public/:bookingKey`, which would otherwise read `self-service` as a key.
 // The token names one reservation of one venue, so these routes take neither id.
-const selfServiceToken = (c: any) => c.req.header("X-Self-Service-Token") as string | undefined;
+const selfServiceToken = (c: Context<AppEnv>) => c.req.header("X-Self-Service-Token") as string | undefined;
 
-async function guestAnswer(c: any, link: Link) {
+async function guestAnswer(c: Context<AppEnv>, link: Link) {
   const target = await publicVenueOf(db, link.venueId);
   const view = target && (await guestView(db, target, link.reservationId));
   return view ? c.json(view) : error(c, "self_service_link_invalid");
@@ -351,7 +353,7 @@ app.post("/v1/public/self-service/cancel", async (c) => {
 
 // The public waitlist of ADR-0021, section 3. Like the self-service routes, the entry routes take the waitlist token
 // only, and sit above `/v1/public/:bookingKey`. Every failure of a token reads the same (C74).
-async function waitlistAnswer(c: any, venueId: string, entryId: string) {
+async function waitlistAnswer(c: Context<AppEnv>, venueId: string, entryId: string) {
   const target = await publicVenueOf(db, venueId);
   const view = target && (await waitlistGuestView(db, target, entryId));
   return view ? c.json(view) : error(c, "self_service_link_invalid");
@@ -520,9 +522,9 @@ app.post("/v1/public/:bookingKey/waitlist", async (c) => {
 // The widget page (ADR-0017 section 1). The API serves it, not Caddy, because `frame-ancestors` is per venue.
 // Not rate limited. An unknown, rotated or disabled key, and a host that is not the widget's, read alike.
 const widgetDist = () => process.env.WIDGET_DIST || defaultWidgetDist();
-const widgetNotFound = (c: any) =>
+const widgetNotFound = (c: Context<AppEnv>) =>
   c.body(notFoundHtml(c.req.query("lang"), c.req.header("accept-language")), 404, widgetHeaders([]));
-const widgetNotBuilt = (c: any) => {
+const widgetNotBuilt = (c: Context<AppEnv>) => {
   console.error(`widget page: no build in ${widgetDist()}. Run pnpm --filter @opencovers/widget build.`);
   return c.body("The booking widget is not built.", 503, {
     ...widgetHeaders([]),
@@ -530,7 +532,7 @@ const widgetNotBuilt = (c: any) => {
   });
 };
 
-const widgetFileNotFound = (c: any) =>
+const widgetFileNotFound = (c: Context<AppEnv>) =>
   c.body("Not found", 404, { "Content-Type": "text/plain; charset=utf-8", "X-Content-Type-Options": "nosniff" });
 
 // Browsers ask for /favicon.ico on every page. The widget host answers 204 (no icon, no console error) with no
@@ -1334,21 +1336,21 @@ app.post("/v1/venues/:venueId/guests/:guestId/unmerge", adminOnly, async (c) => 
   return guestResponse(c, result, venueId);
 });
 
-async function guestResponse(c: any, result: GuestWrite, venueId: string) {
+async function guestResponse(c: Context<AppEnv>, result: GuestWrite, venueId: string) {
   if (!result.ok) return error(c, result.code);
   const guest = await getGuest(db, venueId, result.guestId);
   if (!guest) return error(c, "guest_not_found");
   return c.json(guest);
 }
 
-async function writeResponse(c: any, result: any, venueId: string) {
+async function writeResponse(c: Context<AppEnv>, result: WriteResult, venueId: string) {
   if (!result.ok) return error(c, result.code);
   const reservation = await getReservation(db, venueId, result.id);
   if (!reservation) return error(c, "reservation_not_found");
   return c.json(toApi(reservation, venueId), 200);
 }
 
-function toApi(reservation: any, venueId: string) {
+function toApi(reservation: Reservation, venueId: string) {
   return {
     id: reservation.id,
     venueId,
@@ -1393,7 +1395,7 @@ app.post("/v1/venues/:venueId/erasure", adminOnly, async (c) => {
   return c.json(result);
 });
 
-async function sessionUser(c: any) {
+async function sessionUser(c: Context<AppEnv>) {
   const result = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!result) return null;
   return result.user ?? null;
@@ -1401,12 +1403,12 @@ async function sessionUser(c: any) {
 
 // The staff member behind a request, or null when a key made it. Only a
 // session names a person, so a key's creations stay unattributed.
-async function creatorId(c: any): Promise<string | null> {
+async function creatorId(c: Context<AppEnv>): Promise<string | null> {
   if (c.req.header("apikey")) return null;
   return (await sessionUser(c))?.id ?? null;
 }
 
-async function authorizeAdmin(c: any): Promise<{ principal: string } | Response> {
+async function authorizeAdmin(c: Context<AppEnv>): Promise<{ principal: string } | Response> {
   const key = c.req.header("apikey");
   if (!key) return error(c, "unauthorized");
   const admin = await authenticateAdmin(db, key);
@@ -1418,23 +1420,27 @@ async function authorizeAdmin(c: any): Promise<{ principal: string } | Response>
   return { principal: admin.principal };
 }
 
-function hasInvalidConsent(body: any): boolean {
-  const consent = body?.guest?.consent;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasInvalidConsent(body: unknown): boolean {
+  const consent = isRecord(body) && isRecord(body.guest) ? body.guest.consent : undefined;
   return consent !== undefined && !isConsent(consent);
 }
 
-function hasInvalidRating(body: any): boolean {
-  const rating = body?.rating;
+function hasInvalidRating(body: unknown): boolean {
+  const rating = isRecord(body) ? body.rating : undefined;
   return rating !== undefined && rating !== null && !isRating(rating);
 }
 
-function hasInvalidReconfirmation(body: any): boolean {
-  const reconfirmation = body?.reconfirmation;
+function hasInvalidReconfirmation(body: unknown): boolean {
+  const reconfirmation = isRecord(body) ? body.reconfirmation : undefined;
   return reconfirmation !== undefined && !isReconfirmation(reconfirmation);
 }
 
-function hasInvalidCommentary(body: any): boolean {
-  const commentary = body?.commentary;
+function hasInvalidCommentary(body: unknown): boolean {
+  const commentary = isRecord(body) ? body.commentary : undefined;
   return commentary !== undefined && !isCommentary(commentary);
 }
 
