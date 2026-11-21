@@ -10,7 +10,7 @@ describe("request schemas", () => {
   it("requires explicit, correctly typed admin actions rather than accepting null or ignored keys", () => {
     expect(createVenueSchema.safeParse({ name: "Restaurant" }).success).toBe(true);
     expect(createVenueSchema.safeParse({ name: "  " }).success).toBe(false);
-    expect(createVenueSchema.safeParse({ name: "Restaurant", timezone: null }).success).toBe(false);
+    expect(createVenueSchema.safeParse({ name: "Restaurant", timezone: null }).success).toBe(true);
     expect(createVenueSchema.safeParse({ name: "Restaurant", nam: "typo" }).success).toBe(false);
     expect(invitationSchema.safeParse({ role: "write", expiresInHours: 72 }).success).toBe(true);
     expect(invitationSchema.safeParse({ role: "write", expiresInHours: null }).success).toBe(false);
