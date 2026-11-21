@@ -10,6 +10,7 @@ export function Confirmation({ t, locale, created }: { t: Translate; locale: str
   const ids = useId();
   const link = selfServiceToken ? selfServiceUrl(window.location.origin, selfServiceToken, locale) : null;
   const party = reservation.partySize === 1 ? t("field.partyOptionOne") : t("field.partyOption", { n: reservation.partySize });
+  const copiedStatus = copied ? t("action.copied") : "";
   return (
     <Section title={t("done.title")} focus>
       <p>
@@ -51,7 +52,7 @@ export function Confirmation({ t, locale, created }: { t: Translate; locale: str
               {t("action.open")}
             </a>
             <span role="status" className="text-sm text-muted">
-              {copied ? t("action.copied") : ""}
+              {copiedStatus}
             </span>
           </div>
         </div>
