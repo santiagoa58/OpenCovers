@@ -9,6 +9,8 @@ describe("request schemas", () => {
     expect(tableSchema.safeParse({ id: "1", name: "T1", seats: 2 }).success).toBe(true);
     expect(tableSchema.safeParse({ id: "1", name: "T1", seats: "2" }).success).toBe(false);
     expect(tableSchema.safeParse({ id: "1", name: "T1", seats: 0 }).success).toBe(false);
+    expect(tableSchema.safeParse({ id: "1", name: "T1", seats: 2, seets: 3 }).success).toBe(false);
+    expect(tableLayoutSchema.safeParse({ x: 10, extra: 1 }).success).toBe(false);
     expect(tableLayoutSchema.safeParse({ x: 100, rotation: 90 }).success).toBe(true);
     expect(tableLayoutSchema.safeParse({ x: "100" }).success).toBe(false);
     expect(floorItemSchema.safeParse({ type: "wall", posX: 20 }).success).toBe(true);
@@ -32,6 +34,11 @@ describe("request schemas", () => {
   it("checks venue settings structure without embedding booking-policy refinements", () => {
     expect(venueConfigSchema.safeParse({ enabled: true, leadTimeMinutes: 30 }).success).toBe(true);
     expect(venueConfigSchema.safeParse({ leadTimeMinutes: "30" }).success).toBe(false);
+    expect(venueConfigSchema.safeParse({ leadTimMinutes: 30 }).success).toBe(false);
+    expect(venueConfigSchema.safeParse({ blockedDates: null }).success).toBe(false);
+    expect(venueConfigSchema.safeParse({ blockedDates: [] }).success).toBe(true);
+    expect(venueConfigSchema.safeParse({ turnTimes: null }).success).toBe(false);
+    expect(venueConfigSchema.safeParse({ turnTimes: [] }).success).toBe(true);
     expect(venueConfigSchema.safeParse({ maxAdvanceDays: 1001 }).success).toBe(false);
     expect(venueConfigSchema.safeParse({ blockedDates: ["2026-11-21", { from: "2026-11-22", to: "2026-11-23" }] }).success).toBe(true);
     expect(venueConfigSchema.safeParse({ blockedDates: [{ from: "2026-11-22" }] }).success).toBe(false);
