@@ -35,6 +35,7 @@ import { api, type Reservation } from "@/lib/api";
 import { longDate, todayIso } from "@/lib/date";
 import { errorMessage, isApiError } from "@/lib/error-message";
 import { guestInitials } from "@/lib/format";
+import { useTimeDisplay } from "@/lib/time-format";
 
 type RowAction =
   | { kind: "status"; labelKey: MessageKey; status: string }
@@ -242,6 +243,7 @@ function ReservationRow({
   onTrace: () => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const actions = rowActions(reservation.status);
   const canEdit = ["booked", "seated", "attended"].includes(reservation.status);
   const canAssign = ["booked", "seated"].includes(reservation.status);
@@ -257,7 +259,7 @@ function ReservationRow({
         finished && "text-muted-foreground",
       )}
     >
-      <div className="font-display text-xl tabular-nums">{reservation.time}</div>
+      <div className="font-display text-xl tabular-nums">{displayTime(reservation.time)}</div>
       <div className="flex min-w-0 items-center gap-3">
         <Avatar className="size-9">
           <AvatarFallback className="text-xs">{guestInitials(reservation.guest.name)}</AvatarFallback>
@@ -277,7 +279,7 @@ function ReservationRow({
       <div className="md:order-last">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={t("agenda.rowActionsFor", { time: reservation.time, name: reservation.guest.name || t("agenda.rowGuestless") })}>
+            <Button variant="ghost" size="icon" aria-label={t("agenda.rowActionsFor", { time: displayTime(reservation.time), name: reservation.guest.name || t("agenda.rowGuestless") })}>
               <MoreHorizontalIcon className="size-4" />
             </Button>
           </DropdownMenuTrigger>
