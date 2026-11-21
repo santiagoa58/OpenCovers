@@ -22,14 +22,15 @@ import { useFloorItems } from "@/hooks/use-floor-items";
 import { api, type FloorTable } from "@/lib/api";
 import { useT } from "@/i18n";
 import { nowTime, todayIso } from "@/lib/date";
+import { setUrlParams, useUrlDate, useUrlTime } from "@/lib/url-state";
 import { useTimeDisplay } from "@/lib/time-format";
 
 export function FloorView({ venueId }: { venueId: string }) {
   const t = useT();
   const nav = useNavigation();
   const displayTime = useTimeDisplay();
-  const [date, setDate] = useState(todayIso());
-  const [time, setTime] = useState(nowTime());
+  const [date, setDate] = useUrlDate();
+  const [time, setTime] = useUrlTime();
   const [seatTable, setSeatTable] = useState<FloorTable | null>(null);
   const [moveFrom, setMoveFrom] = useState<FloorTable | null>(null);
   const queryClient = useQueryClient();
@@ -69,8 +70,7 @@ export function FloorView({ venueId }: { venueId: string }) {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setDate(todayIso());
-                  setTime(nowTime());
+                  setUrlParams({ date: todayIso(), time: nowTime() });
                 }}
               >
                 {t("floor.now")}

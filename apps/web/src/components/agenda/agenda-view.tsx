@@ -32,7 +32,8 @@ import { useAgenda } from "@/hooks/use-agenda";
 import { useTables } from "@/hooks/use-tables";
 import { useT, type MessageKey } from "@/i18n";
 import { api, type Reservation } from "@/lib/api";
-import { longDate, todayIso } from "@/lib/date";
+import { longDate } from "@/lib/date";
+import { useUrlDate } from "@/lib/url-state";
 import { errorMessage, isApiError } from "@/lib/error-message";
 import { guestInitials } from "@/lib/format";
 import { useTimeDisplay } from "@/lib/time-format";
@@ -76,7 +77,7 @@ function groupByService(reservations: Reservation[]) {
 
 export function AgendaView({ venueId }: { venueId: string }) {
   const t = useT();
-  const [date, setDate] = useState(todayIso());
+  const [date, setDate] = useUrlDate();
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [editing, setEditing] = useState<Reservation | null>(null);
   const [assigning, setAssigning] = useState<Reservation | null>(null);

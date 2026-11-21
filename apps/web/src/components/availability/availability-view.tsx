@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAvailability } from "@/hooks/use-availability";
 import { useT } from "@/i18n";
-import { longDate, todayIso } from "@/lib/date";
+import { longDate } from "@/lib/date";
+import { useUrlDate, useUrlPartySize } from "@/lib/url-state";
 import type { AvailabilitySlot } from "@/lib/api";
 import { SlotExplanation } from "@/components/availability/slot-explanation";
 import { NewReservationDialog } from "@/components/reservation/new-reservation-dialog";
@@ -19,8 +20,8 @@ import { useTimeDisplay } from "@/lib/time-format";
 export function AvailabilityView({ venueId }: { venueId: string }) {
   const t = useT();
   const nav = useNavigation();
-  const [date, setDate] = useState(todayIso());
-  const [partySize, setPartySize] = useState(2);
+  const [date, setDate] = useUrlDate();
+  const [partySize, setPartySize] = useUrlPartySize();
   const [slot, setSlot] = useState<{ time: string } | null>(null);
   const { data, isPending, isError, error, isRefetching, refetch } = useAvailability(venueId, date, partySize);
 
@@ -45,7 +46,7 @@ export function AvailabilityView({ venueId }: { venueId: string }) {
                 size="icon"
                 aria-label={t("availability.fewerGuests")}
                 disabled={partySize <= 1}
-                onClick={() => setPartySize((n) => Math.max(1, n - 1))}
+                onClick={() => setPartySize(Math.max(1, partySize - 1))}
               >
                 <MinusIcon />
               </Button>
@@ -61,7 +62,7 @@ export function AvailabilityView({ venueId }: { venueId: string }) {
                 variant="outline"
                 size="icon"
                 aria-label={t("availability.moreGuests")}
-                onClick={() => setPartySize((n) => n + 1)}
+                onClick={() => setPartySize(partySize + 1)}
               >
                 <PlusIcon />
               </Button>

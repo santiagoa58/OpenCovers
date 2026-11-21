@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useVenues } from "@/hooks/use-venues";
 import { useT } from "@/i18n";
 import { useUiStore } from "@/stores/ui-store";
-import { readSectionParam, sectionForTarget, setSectionParam } from "@/lib/settings-section";
+import { sectionForTarget } from "@/lib/settings-section";
+import { useUrlParam, setUrlParams } from "@/lib/url-state";
 import { AgendaView } from "./agenda/agenda-view";
 import { AvailabilityView } from "./availability/availability-view";
 import { FloorView } from "./floor/floor-view";
@@ -27,7 +28,11 @@ export function Dashboard() {
   const demo = useDemoStatus();
   const venueId = useUiStore((s) => s.venueId);
   const setVenue = useUiStore((s) => s.setVenue);
-  const [active, setActive] = useState<ViewId>(() => (readSectionParam() ? "setup" : "agenda"));
+  const viewParam = useUrlParam("view");
+  const sectionParam = useUrlParam("section");
+  const views: ViewId[] = ["agenda", "floor", "availability", "waitlist", "setup", "team"];
+  const requestedView = views.find((view) => view === viewParam) ?? (sectionParam ? "setup" : "agenda");
+  const active: ViewId = requestedView === "team" && role && role !== "admin" ? "agenda" : requestedView;
   const [navOpen, setNavOpen] = useState(false);
   const [section, setSection] = useState<string | null>(null);
 
@@ -44,12 +49,17 @@ export function Dashboard() {
   }, [venues, venueId, setVenue]);
 
   const goTo = useCallback((view: ViewId, to?: string) => {
-    setActive(view);
     setSection(to ?? null);
-    // Open the Settings section that holds the target; it is scrolled to once drawn.
     const target = to ? sectionForTarget(to) : undefined;
-    if (view === "setup" && target) setSectionParam(target, "push");
-  }, []);
+    const changedScreen = view !== active;
+    setUrlParams({
+      view,
+      section: view === "setup" ? (target ?? (changedScreen ? null : sectionParam)) : null,
+      date: changedScreen ? null : undefined,
+      time: changedScreen ? null : undefined,
+      party: changedScreen ? null : undefined,
+    });
+  }, [active, sectionParam]);
   const navigation = useMemo(() => ({ goTo, role }), [goTo, role]);
 
   const sectionDone = useCallback(() => setSection(null), []);
@@ -63,11 +73,6 @@ export function Dashboard() {
       document.title = "OpenCovers";
     };
   }, [active, venueName, t]);
-
-  // The section is part of the address only while Settings is open.
-  useEffect(() => {
-    if (active !== "setup" && readSectionParam()) setSectionParam(null);
-  }, [active]);
 
   const mainRef = useRef<HTMLElement>(null);
 
@@ -85,12 +90,12 @@ export function Dashboard() {
         >
           {t("layout.skipToContent")}
         </a>
-        <Sidebar active={active} onSelect={setActive} role={role} />
+        <Sidebar active={active} onSelect={(view) => goTo(view)} role={role} />
         <MobileNav
           open={navOpen}
           onOpenChange={setNavOpen}
           active={active}
-          onSelect={setActive}
+          onSelect={(view) => goTo(view)}
           role={role}
         />
         <div className="flex min-w-0 flex-1 flex-col">
