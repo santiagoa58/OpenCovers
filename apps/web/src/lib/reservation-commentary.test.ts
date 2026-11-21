@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseReservationCommentary } from "./reservation-commentary";
+import { formatReservationCommentary, parseReservationCommentary } from "./reservation-commentary";
 
 describe("parseReservationCommentary", () => {
   it("separates an imported sheet reference from staff notes", () => {
@@ -25,6 +25,16 @@ describe("parseReservationCommentary", () => {
     });
     expect(parseReservationCommentary("  ")).toEqual({ reference: null, members: null, note: null });
     expect(parseReservationCommentary(null)).toEqual({ reference: null, members: null, note: null });
+  });
+
+  it("keeps imported details when a new staff note is entered", () => {
+    const stored = formatReservationCommentary("Original sheet reference: #302", "Requested a quiet table");
+    expect(stored).toBe("Original sheet reference: #302\\nStaff note: Requested a quiet table");
+    expect(parseReservationCommentary(stored)).toEqual({
+      reference: "#302", members: null, note: "Requested a quiet table",
+    });
+    expect(formatReservationCommentary(stored, "")).toBe("Original sheet reference: #302");
+    expect(formatReservationCommentary("Window seat", "Table near entrance")).toBe("Table near entrance");
   });
 
   it("does not reclassify unrelated notes that happen to contain reference numbers", () => {
