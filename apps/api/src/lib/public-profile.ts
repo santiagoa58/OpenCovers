@@ -78,7 +78,7 @@ function httpsUrl(value: unknown): string | null {
 export function parseProfileInput(body: unknown): ProfileInput | null {
   if (typeof body !== "object" || body === null || Array.isArray(body)) return null;
   const b = body as Record<string, unknown>;
-  if (Object.keys(b).some((key) => !PROFILE_FIELDS.has(key))) return null;
+  if (Object.keys(b).length === 0 || Object.keys(b).some((key) => !PROFILE_FIELDS.has(key))) return null;
   const out: ProfileInput = {};
   if (b.publicProfileEnabled !== undefined) {
     if (typeof b.publicProfileEnabled !== "boolean") return null;
