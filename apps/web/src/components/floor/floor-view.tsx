@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
 import { FloorCanvas } from "@/components/floor/floor-canvas";
 import { FloorSkinToggle } from "@/components/floor/floor-skin-toggle";
-import { SeatingTimeline } from "@/components/floor/seating-timeline";
+import { PacingView } from "@/components/pacing/pacing-view";
 import { MoveDialog } from "@/components/floor/move-dialog";
 import { useFloor } from "@/hooks/use-floor";
 import { useFloorItems } from "@/hooks/use-floor-items";
@@ -87,7 +87,7 @@ export function FloorView({ venueId }: { venueId: string }) {
         </div>
       </div>
 
-      <SeatingTimeline
+      <PacingView
         venueId={venueId}
         date={date}
         time={time}
