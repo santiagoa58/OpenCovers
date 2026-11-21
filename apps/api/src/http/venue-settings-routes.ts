@@ -6,16 +6,10 @@ import { getOnlineBooking, parseOnlineBookingInput, rotateBookingKey, setOnlineB
 import { createWebhook, deleteWebhook, listWebhooks, webhookPolicyFromEnv } from "../lib/webhooks";
 import { toCountryCode } from "../lib/contact";
 import { parseTurnTimes } from "../lib/turn-times";
-import { isMaxActivePerGuest, isMaxAdvanceDays, parseBlockedDates } from "../lib/booking-policy";
+import { venueConfigSchema, webhookCreateSchema } from "./venue-settings-schemas";
+import { parseBlockedDates } from "../lib/booking-policy";
 import type { AppEnv } from "./types";
 import { sendError } from "./send-error";
-
-function isCeiling(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 1000;
-}
-function isPosInt(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
-}
 
 /** Settings routes share the venue's auth and error semantics, with no UI dependencies. */
 export function registerVenueSettingsRoutes(
@@ -32,37 +26,22 @@ app.get("/v1/venues/:venueId/config", async (c) => {
 
 app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (body.phoneCountry != null && !toCountryCode(body.phoneCountry)) {
-    return sendError(c, "invalid_request");
-  }
+  const parsed = venueConfigSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return sendError(c, "invalid_request");
+  const body = parsed.data;
+  const phoneCountry = body.phoneCountry == null ? body.phoneCountry : toCountryCode(body.phoneCountry);
+  if (body.phoneCountry && !phoneCountry) return sendError(c, "invalid_request");
+
+  // Scheduling semantics and calendar normalization stay in their domain utilities.
   const turnTimes = body.turnTimes === undefined ? undefined : parseTurnTimes(body.turnTimes);
   if (turnTimes === null) return sendError(c, "invalid_request");
-  if (body.overbookingCeiling !== undefined && !isCeiling(body.overbookingCeiling)) {
-    return sendError(c, "invalid_request");
-  }
   const blockedDates = body.blockedDates === undefined ? undefined : parseBlockedDates(body.blockedDates);
   if (blockedDates === null) return sendError(c, "invalid_request");
-  if (body.maxAdvanceDays != null && !isMaxAdvanceDays(body.maxAdvanceDays)) return sendError(c, "invalid_request");
-  if (body.maxActivePerGuestPerDay != null && !isMaxActivePerGuest(body.maxActivePerGuestPerDay)) {
-    return sendError(c, "invalid_request");
-  }
+
   const result = await setConfig(db, venueId, {
-    enabled: body.enabled,
-    noticeAddress: body.noticeAddress,
-    notificationsEnabled: typeof body.notificationsEnabled === "boolean" ? body.notificationsEnabled : undefined,
-    resendApiKey: typeof body.resendApiKey === "string" ? body.resendApiKey : undefined,
-    fromEmail: typeof body.fromEmail === "string" ? body.fromEmail : undefined,
-    slotIntervalMinutes: isPosInt(body.slotIntervalMinutes) ? body.slotIntervalMinutes : undefined,
-    leadTimeMinutes: isPosInt(body.leadTimeMinutes) ? body.leadTimeMinutes : undefined,
-    lastSeatingOffsetMinutes: isPosInt(body.lastSeatingOffsetMinutes)
-      ? body.lastSeatingOffsetMinutes
-      : undefined,
-    phoneCountry: body.phoneCountry === null ? null : toCountryCode(body.phoneCountry) ?? undefined,
+    ...body,
+    phoneCountry,
     turnTimes,
-    overbookingCeiling: body.overbookingCeiling,
-    maxAdvanceDays: body.maxAdvanceDays,
-    maxActivePerGuestPerDay: body.maxActivePerGuestPerDay,
     blockedDates,
   });
   if (!result.ok) return sendError(c, result.code);
@@ -118,12 +97,12 @@ app.get("/v1/venues/:venueId/webhooks", async (c) => {
 
 app.post("/v1/venues/:venueId/webhooks", async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.url !== "string") return sendError(c, "invalid_request");
+  const parsed = webhookCreateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return sendError(c, "invalid_request");
   const result = await createWebhook(
     db,
     venueId,
-    body.url,
+    parsed.data.url,
     webhookPolicyFromEnv(),
     await creatorId(c),
   );
