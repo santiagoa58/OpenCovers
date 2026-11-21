@@ -193,11 +193,12 @@ describe("AgendaView actions", () => {
     expect(screen.getByText("Booked")).toBeInTheDocument();
   });
 
-  it("offers no status actions for a finished reservation", async () => {
+  it("lets staff undo the status of a finished reservation", async () => {
     const { user } = setup(reservation({ status: "attended" }));
     await openRowMenu(user);
 
-    expect(await screen.findByRole("menuitem", { name: /Edit consent/ })).toBeInTheDocument();
+    expect(await screen.findByRole("menuitem", { name: "Edit reservation" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Undo attended" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Seat" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Cancel" })).not.toBeInTheDocument();
   });
@@ -226,7 +227,7 @@ describe("AgendaView actions", () => {
     });
     await openRowMenu(user);
 
-    await user.click(await screen.findByRole("menuitem", { name: /Edit consent/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "Edit reservation" }));
     await user.clear(await screen.findByLabelText("Note"));
     await user.type(screen.getByLabelText("Note"), "Quiet table");
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -234,7 +235,10 @@ describe("AgendaView actions", () => {
     await waitFor(() => expect(api.writes()).toHaveLength(1));
     expect(api.writes()[0].path).toBe("/v1/venues/v1/reservations/r1/modify");
     expect(api.writes()[0].body).toEqual({
-      guest: { consent: "unknown" },
+      date: "2026-11-20",
+      time: "20:30",
+      partySize: 2,
+      guest: { name: "Jane Doe", consent: "unknown" },
       rating: 3,
       commentary: "Quiet table",
     });
