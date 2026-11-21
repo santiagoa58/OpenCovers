@@ -12,10 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { TimeField } from "@/components/time-field";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -24,7 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConsentSelect } from "@/components/reservation/consent-select";
-import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
+import { StaffNoteField } from "@/components/reservation/staff-note-field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX, type Consent, type Reservation } from "@/lib/api";
 import { formatReservationCommentary, parseReservationCommentary } from "@/lib/reservation-commentary";
@@ -116,10 +115,10 @@ export function EditReservationDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-guest-name">{t("reservation.guestName")}</Label>
+          <Field>
+            <FieldLabel htmlFor="edit-guest-name">{t("reservation.guestName")}</Label>
             <Input id="edit-guest-name" maxLength={200} {...register("name")} />
-          </div>
+          </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="edit-date">{t("reservation.edit.date")}</Label>
@@ -139,7 +138,7 @@ export function EditReservationDialog({
               <Label htmlFor="edit-party-size">{t("reservation.partySize")}</Label>
               <Input id="edit-party-size" type="number" min={1} disabled={reservation?.status === "attended"}
                 {...register("partySize", { valueAsNumber: true, min: 1 })} />
-              {errors.partySize && <p className="text-sm text-destructive">{t("reservation.atLeastOne")}</p>}
+              <FieldError>{errors.partySize && t("reservation.atLeastOne")}</FieldError>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">{t("reservation.edit.scheduleHelp")}</p>
@@ -155,7 +154,7 @@ export function EditReservationDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>{t("reservation.edit.rating")}</Label>
+            <FieldLabel>{t("reservation.edit.rating")}</FieldLabel>
             <Controller
               name="rating"
               control={control}
@@ -177,19 +176,12 @@ export function EditReservationDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <ReservationAnnotations commentary={reservation?.commentary} includeStaffNotes={false} />
-            <Label htmlFor="edit-commentary">{t("reservation.note")}</Label>
-            <Textarea
-              id="edit-commentary"
-              maxLength={staffNoteMax}
-              placeholder={t("reservation.notePlaceholder")}
-              {...register("commentary")}
-            />
-            <p className="text-sm text-muted-foreground">
-              {t("reservation.noteHint", { max: staffNoteMax })}
-            </p>
-          </div>
+          <StaffNoteField
+            id="edit-commentary"
+            maxLength={staffNoteMax}
+            originalCommentary={reservation?.commentary}
+            inputProps={register("commentary")}
+          />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
