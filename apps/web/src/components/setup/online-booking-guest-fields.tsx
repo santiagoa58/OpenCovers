@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n";
-import { type OnlineBookingForm, type FormErrors } from "@/lib/online-booking";
+import type { OnlineBookingForm, FormErrors } from "@/lib/online-booking";
 
 export function OnlineBookingGuestFields({
   form,
