@@ -52,6 +52,19 @@ describe("AgendaView actions", () => {
     resetApiMocks();
   });
 
+  it("opens the shared print dialog from Agenda without navigating to Floor plan", async () => {
+    const { user } = setup(reservation(), {
+      "GET /v1/venues/v1/tables": { body: { tables: TABLES } },
+    });
+    await screen.findByText("Jane Doe");
+    await user.click(screen.getByRole("button", { name: "Print" }));
+    expect(screen.getByRole("dialog", { name: "Print reservations" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Full day" })).toBeChecked();
+    expect(document.querySelector("[data-reservation-print-root]")).toHaveTextContent("Jane Doe");
+    expect(screen.getByRole("button", { name: "Print list" })).toBeEnabled();
+    expect(window.location.search).not.toContain("view=floor");
+  });
+
   it("lists the reservations of the day", async () => {
     setup(reservation());
 
