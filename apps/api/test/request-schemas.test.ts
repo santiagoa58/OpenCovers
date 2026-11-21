@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { floorItemSchema, serviceSchema, tableLayoutSchema, tableSchema } from "../src/http/room-schemas";
+import { venueConfigSchema, webhookCreateSchema } from "../src/http/venue-settings-schemas";
 import { parseDays } from "../src/lib/catalog";
 import { parseTurnTimes } from "../src/lib/turn-times";
 
@@ -26,6 +27,16 @@ describe("request schemas", () => {
     expect(parseDays(parsed.data.days)).toEqual([1, 7]);
     expect(parseDays([1, 1])).toBeNull();
     expect(serviceSchema.safeParse({ name: "dinner", openStart: "17:00", openEnd: "22:00", days: [8] }).success).toBe(false);
+  });
+
+  it("checks venue settings structure without embedding booking-policy refinements", () => {
+    expect(venueConfigSchema.safeParse({ enabled: true, leadTimeMinutes: 30 }).success).toBe(true);
+    expect(venueConfigSchema.safeParse({ leadTimeMinutes: "30" }).success).toBe(false);
+    expect(venueConfigSchema.safeParse({ maxAdvanceDays: 1001 }).success).toBe(false);
+    expect(venueConfigSchema.safeParse({ blockedDates: ["2026-11-21", { from: "2026-11-22", to: "2026-11-23" }] }).success).toBe(true);
+    expect(venueConfigSchema.safeParse({ blockedDates: [{ from: "2026-11-22" }] }).success).toBe(false);
+    expect(webhookCreateSchema.safeParse({ url: "https://example.com/hook" }).success).toBe(true);
+    expect(webhookCreateSchema.safeParse({ url: 123 }).success).toBe(false);
   });
 
   it("separates turn-time shape checking from ordered party-size thresholds", () => {
