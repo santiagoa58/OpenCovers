@@ -15,7 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StaffNoteField } from "@/components/reservation/staff-note-field";
-import { Field, FieldLabel } from "@/components/ui/field";
 import { useTables } from "@/hooks/use-tables";
 import { useVenueConfig } from "@/hooks/use-venue-config";
 import { bookingMinutes } from "@/lib/planning-conflicts";
@@ -245,18 +244,18 @@ export function NewReservationDialog({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel htmlFor="guest-name">{t("reservation.guestName")}</FieldLabel>
+            <div className="space-y-2">
+              <Label htmlFor="guest-name">{t("reservation.guestName")}</Label>
               <Input id="guest-name" placeholder={t("reservation.guestNamePlaceholder")} {...register("name")} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="guest-contact">{t("reservation.contact")}</FieldLabel>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="guest-contact">{t("reservation.contact")}</Label>
               <Input
                 id="guest-contact"
                 placeholder="jane@example.com" // i18n-ok
                 {...register("contact")}
               />
-            </Field>
+            </div>
           </div>
 
           <StaffNoteField
