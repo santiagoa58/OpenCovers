@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { AlertTriangleIcon } from "lucide-react";
+import { AlertTriangleIcon, InfoIcon } from "lucide-react";
 import { useAgenda } from "@/hooks/use-agenda";
 import { useTables } from "@/hooks/use-tables";
 import { useVenueConfig } from "@/hooks/use-venue-config";
@@ -30,31 +30,39 @@ export function PlanningConflictsBanner({ venueId, date }: { venueId: string; da
         allocatedMinutes(r, turnTimes) < bookingMinutes(turnTimes, r.partySize)),
       peakParties: peakSimultaneousParties(reservations, turnTimes),
       tableCount: venueTables.length,
-      duration: turnTimes?.[0]?.minutes ?? 120,
       turnTimes,
     };
   }, [agenda.data, tables.data, config.data]);
 
   if (!analysis) return null;
-  const { conflicts, turnovers, exceptions, peakParties, tableCount, duration, turnTimes } = analysis;
+  const { conflicts, turnovers, exceptions, peakParties, tableCount, turnTimes } = analysis;
   const capacityConflict = peakParties > tableCount;
   if (!conflicts.length && !turnovers.length && !exceptions.length && !capacityConflict) return null;
   const actualConflicts = conflicts.length > 0 || capacityConflict;
 
   return (
-    <details className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3" data-testid="floor-planning-conflicts">
+    <details
+      className={actualConflicts
+        ? "rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3"
+        : "rounded-xl border bg-card px-4 py-3"}
+      data-testid="floor-planning-conflicts"
+    >
       <summary className="flex cursor-pointer items-start gap-3 text-sm font-medium">
-        <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        {actualConflicts
+          ? <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
+          : <InfoIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
         <span>
-          {actualConflicts
-            ? t("floor.planning.conflicts", { count: conflicts.length, minutes: duration })
-            : t("floor.planning.savedIssues", { short: exceptions.length, turns: turnovers.length })}
+          {capacityConflict
+            ? t("floor.planning.capacityHeading")
+            : conflicts.length > 0
+              ? t("floor.planning.conflicts", { count: conflicts.length })
+              : t("floor.planning.savedIssues")}
         </span>
       </summary>
 
       {actualConflicts && (
         <>
-          <p className="mt-2 text-sm text-muted-foreground">{t("floor.planning.details")}</p>
+          {conflicts.length > 0 && <p className="mt-2 text-sm text-muted-foreground">{t("floor.planning.details")}</p>}
           {capacityConflict && (
             <p className="mt-2 text-sm font-medium text-destructive" data-testid="floor-peak-parties-warning">
               {t("floor.planning.insufficientTables", { parties: peakParties, tables: tableCount })}
