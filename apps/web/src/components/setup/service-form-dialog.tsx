@@ -1,5 +1,7 @@
 import { errorMessage } from "@/lib/error-message";
 import { useT } from "@/i18n";
+import { useTimeDisplay } from "@/lib/time-format";
+import { useUiStore } from "@/stores/ui-store";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -38,6 +40,8 @@ export function ServiceFormDialog({
   initial,
 }: ServiceFormDialogProps) {
   const t = useT();
+  const displayTime = useTimeDisplay();
+  const timeFormat = useUiStore((s) => s.timeFormat);
   const queryClient = useQueryClient();
   const editing = Boolean(initial);
   const [days, setDays] = useState<number[]>(ALL_WEEKDAYS);
@@ -45,6 +49,7 @@ export function ServiceFormDialog({
 
   const {
     register,
+    watch,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -122,6 +127,7 @@ export function ServiceFormDialog({
                 type="time"
                 {...register("openStart", { required: t("setup.service.openRequired") })}
               />
+              {timeFormat === "12h" && <p className="text-xs text-muted-foreground">{displayTime(watch("openStart"))}</p>}
               {errors.openStart && (
                 <p className="text-sm text-destructive">{errors.openStart.message}</p>
               )}
@@ -133,6 +139,7 @@ export function ServiceFormDialog({
                 type="time"
                 {...register("openEnd", { required: t("setup.service.closeRequired") })}
               />
+              {timeFormat === "12h" && <p className="text-xs text-muted-foreground">{displayTime(watch("openEnd"))}</p>}
               {errors.openEnd && (
                 <p className="text-sm text-destructive">{errors.openEnd.message}</p>
               )}
