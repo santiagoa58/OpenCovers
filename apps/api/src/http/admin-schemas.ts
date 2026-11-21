@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BLOCKLIST_REASONS } from "../lib/blocklist";
 import { MAX_EXPIRY_HOURS } from "../lib/invitations";
 
 const role = z.enum(["read", "write", "admin"]);
@@ -44,3 +45,15 @@ export const erasureSchema = z.strictObject({
   guestId: z.string().optional(),
   principal: z.string().optional(),
 });
+
+export const blocklistSubjectSchema = z.strictObject({
+  guestId: z.string().optional(),
+  contact: z.string().optional(),
+});
+
+export const blocklistAddSchema = z.strictObject({
+  guestId: z.string().optional(),
+  contact: z.string().optional(),
+  reason: z.enum(BLOCKLIST_REASONS).nullable().optional(),
+});
+
