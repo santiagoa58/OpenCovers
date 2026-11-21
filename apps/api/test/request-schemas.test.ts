@@ -60,6 +60,7 @@ describe("request schemas", () => {
     expect(tableSchema.safeParse({ id: "1", name: "T1", seats: 0 }).success).toBe(false);
     expect(tableSchema.safeParse({ id: "1", name: "T1", seats: 2, seets: 3 }).success).toBe(false);
     expect(tableLayoutSchema.safeParse({ x: 10, extra: 1 }).success).toBe(false);
+    expect(tableLayoutSchema.safeParse({}).success).toBe(true); // Shape is valid; the PATCH route rejects no-op bodies.
     expect(tableLayoutSchema.safeParse({ x: 100, rotation: 90 }).success).toBe(true);
     expect(tableLayoutSchema.safeParse({ x: "100" }).success).toBe(false);
     expect(floorItemSchema.safeParse({ type: "wall", posX: 20 }).success).toBe(true);
