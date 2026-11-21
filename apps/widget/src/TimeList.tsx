@@ -74,11 +74,11 @@ export function TimeList(props: {
   if (groups.length === 1 && groups[0].service === null) return chips(slots);
   return (
     <div className="space-y-3">
-      {groups.map((group, index) => (
-        <div key={`${index}-${group.service}`} role="group" aria-label={group.service || undefined} className="space-y-1">
-          {group.service && <p className="text-sm font-medium text-muted [overflow-wrap:anywhere]">{group.service}</p>}
+      {groups.map((group) => (
+        <fieldset key={`${group.service ?? "slots"}-${group.slots[0]?.time ?? "empty"}`} className="space-y-1">
+          {group.service && <legend className="text-sm font-medium text-muted [overflow-wrap:anywhere]">{group.service}</legend>}
           {chips(group.slots)}
-        </div>
+        </fieldset>
       ))}
     </div>
   );
