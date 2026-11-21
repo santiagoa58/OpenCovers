@@ -1382,7 +1382,7 @@ function toApi(reservation: Reservation, venueId: string) {
   };
 }
 
-function error(c: any, code: ErrorCode) {
+function error(c: Context<AppEnv>, code: ErrorCode) {
   return c.json(errorBody(code), ERRORS[code].status);
 }
 
