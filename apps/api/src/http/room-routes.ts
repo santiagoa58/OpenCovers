@@ -1,4 +1,4 @@
-import { type Hono, type MiddlewareHandler } from "hono";
+import type { Hono, MiddlewareHandler } from "hono";
 import { db } from "../db/client";
 import { sendError } from "./send-error";
 import { addFloorItem, deleteFloorItem, listFloorItems, updateFloorItemLayout } from "../lib/floor-items";
