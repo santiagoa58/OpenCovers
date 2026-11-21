@@ -35,7 +35,7 @@ export const commentarySchema = z
     "A short note for staff about this booking, up to 500 characters, such as an occasion. Never put allergies, medical conditions, or diet needs here. Empty string clears it.",
   );
 
-export export const idempotencyKeySchema = z
+export const idempotencyKeySchema = z
   .string()
   .optional()
   .describe("Any unique string for this write. Send the same one again to retry it. Omit it and the server makes a new one.");
@@ -75,5 +75,5 @@ export const GUEST_NOTE = " Guest fields are guestName, guestContact and consent
 export const RETRY =
   " Pass the same idempotencyKey when you retry after a timeout or an error. Without it a retry is a new write and may create a duplicate.";
 
-const idempotencyKey = (key?: string) => key ?? crypto.randomUUID();
+export const idempotencyKey = (key?: string) => key ?? crypto.randomUUID();
 
