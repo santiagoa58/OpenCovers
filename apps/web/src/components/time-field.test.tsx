@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderWithApp } from "@/test/mock-api";
 import { useUiStore } from "@/stores/ui-store";
@@ -57,7 +57,7 @@ describe("TimeField", () => {
   it("responds immediately when the user changes their display preference", () => {
     useUiStore.setState({ locale: "en", timeFormat: "24h" });
     renderWithApp(<Clock />);
-    useUiStore.setState({ timeFormat: "12h" });
+    act(() => useUiStore.setState({ timeFormat: "12h" }));
     expect(screen.getByRole("combobox", { name: "Time hour" })).toHaveValue("5");
     expect(screen.getByRole("combobox", { name: "Time AM or PM" })).toHaveValue("PM");
     expect(screen.getByTestId("value")).toHaveTextContent("17:30");
