@@ -116,34 +116,34 @@ export function EditReservationDialog({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Field>
-            <FieldLabel htmlFor="edit-guest-name">{t("reservation.guestName")}</Label>
+            <FieldLabel htmlFor="edit-guest-name">{t("reservation.guestName")}</FieldLabel>
             <Input id="edit-guest-name" maxLength={200} {...register("name")} />
           </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="edit-date">{t("reservation.edit.date")}</Label>
+            <Field>
+              <FieldLabel htmlFor="edit-date">{t("reservation.edit.date")}</FieldLabel>
               <Input id="edit-date" type="date" disabled={reservation?.status === "attended"}
                 {...register("date", { required: true })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-time">{t("reservation.edit.time")}</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-time">{t("reservation.edit.time")}</FieldLabel>
               <Controller name="time" control={control} rules={{ required: true }}
                 render={({ field }) => (
                   <TimeField id="edit-time" label={t("reservation.edit.time")} value={field.value} onChange={field.onChange}
                     onBlur={field.onBlur} disabled={reservation?.status === "attended"} />
                 )}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-party-size">{t("reservation.partySize")}</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-party-size">{t("reservation.partySize")}</FieldLabel>
               <Input id="edit-party-size" type="number" min={1} disabled={reservation?.status === "attended"}
                 {...register("partySize", { valueAsNumber: true, min: 1 })} />
               <FieldError>{errors.partySize && t("reservation.atLeastOne")}</FieldError>
-            </div>
+            </Field>
           </div>
           <p className="text-xs text-muted-foreground">{t("reservation.edit.scheduleHelp")}</p>
-          <div className="space-y-2">
-            <Label htmlFor="edit-consent">{t("reservation.contactConsent")}</Label>
+          <Field>
+            <FieldLabel htmlFor="edit-consent">{t("reservation.contactConsent")}</FieldLabel>
             <Controller
               name="consent"
               control={control}
@@ -151,9 +151,9 @@ export function EditReservationDialog({
                 <ConsentSelect id="edit-consent" value={field.value} onChange={field.onChange} />
               )}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
+          <Field>
             <FieldLabel>{t("reservation.edit.rating")}</FieldLabel>
             <Controller
               name="rating"
@@ -174,7 +174,7 @@ export function EditReservationDialog({
                 </Select>
               )}
             />
-          </div>
+          </Field>
 
           <StaffNoteField
             id="edit-commentary"
