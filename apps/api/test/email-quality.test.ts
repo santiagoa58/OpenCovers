@@ -191,7 +191,7 @@ describe("email quality bar", () => {
 
     it("keeps the preheader padding out of the plain-text part", () => {
       expect(mail.text).not.toMatch(/&#8199;|&zwnj;|&nbsp;|&#847;/);
-      expect(mail.text).not.toMatch(/[​-‍  ͏﻿]/);
+      expect(mail.text).not.toMatch(/(?:[\u200b-\u200d\u2007\u00a0\ufeff]|\u034f)/u);
     });
 
     it("has a 620px phone breakpoint that fills the width, drops the radius and keeps buttons full width and tall", () => {
