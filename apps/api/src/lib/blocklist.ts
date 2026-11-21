@@ -422,8 +422,3 @@ export function parseBlocklistSubject(body: unknown): BlocklistSubject | null {
   return typeof contact === "string" && contact.trim() !== "" ? { contact } : null;
 }
 
-/** A missing or null reason is no reason. Undefined means the value is not a reason code. */
-export function parseBlocklistReason(value: unknown): BlocklistReason | null | undefined {
-  if (value === undefined || value === null) return null;
-  return BLOCKLIST_REASONS.find((r) => r === value);
-}
