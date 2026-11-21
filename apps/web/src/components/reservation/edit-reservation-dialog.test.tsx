@@ -44,9 +44,9 @@ describe("EditReservationDialog", () => {
 
     expect(screen.getByText("Update the details recorded for Jane Doe.")).toBeInTheDocument();
     expect(screen.getByLabelText("Staff note")).toHaveValue("Window seat");
-    expect(screen.getByLabelText("Note")).toHaveAttribute("maxlength", "500");
+    expect(screen.getByLabelText("Staff note")).toHaveAttribute("maxlength", "500");
     expect(
-      screen.getByText("Up to 500 characters. Do not enter health data such as allergies."),
+      screen.getByText("Optional instructions for staff, up to 500 characters. Do not include sensitive personal or health information."),
     ).toBeInTheDocument();
   });
 
@@ -79,8 +79,8 @@ describe("EditReservationDialog", () => {
   it("sends the edited note trimmed and the other values unchanged", async () => {
     const { api, user } = setup();
 
-    await user.clear(screen.getByLabelText("Note"));
-    await user.type(screen.getByLabelText("Note"), "  Birthday  ");
+    await user.clear(screen.getByLabelText("Staff note"));
+    await user.type(screen.getByLabelText("Staff note"), "  Birthday  ");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(api.writes()).toHaveLength(1));
@@ -114,10 +114,10 @@ describe("EditReservationDialog", () => {
   it("stops the note at 500 characters", async () => {
     const { user } = setup();
 
-    await user.clear(screen.getByLabelText("Note"));
-    await user.type(screen.getByLabelText("Note"), "x".repeat(520));
+    await user.clear(screen.getByLabelText("Staff note"));
+    await user.type(screen.getByLabelText("Staff note"), "x".repeat(520));
 
-    expect(screen.getByLabelText("Note")).toHaveValue("x".repeat(500));
+    expect(screen.getByLabelText("Staff note")).toHaveValue("x".repeat(500));
   });
 
   it("lets staff correct the guest label and party size", async () => {
