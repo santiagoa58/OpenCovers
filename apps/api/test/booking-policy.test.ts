@@ -130,6 +130,46 @@ describe("defaults", () => {
 });
 
 describe("the config", () => {
+  it("distinguishes omitted, cleared and invalid optional arrays without partial writes", async () => {
+    const venueId = await seedVenue();
+    const initial = {
+      blockedDates: ["2026-12-25"],
+      turnTimes: [{ upTo: 1000, minutes: 90 }],
+    };
+    expect((await setConfig(venueId, initial)).status).toBe(200);
+
+    const preserved = await setConfig(venueId, { leadTimeMinutes: 15 });
+    expect(preserved.status).toBe(200);
+    expect(await preserved.json()).toMatchObject({
+      blockedDates: [{ from: "2026-12-25", to: "2026-12-25" }],
+      turnTimes: initial.turnTimes,
+    });
+
+    for (const body of [
+      { blockedDates: null },
+      { turnTimes: null },
+      { blockedDates: ["not-a-date"], leadTimeMinutes: 30 },
+      { turnTimes: [{ upTo: 2, minutes: 120 }, { upTo: 1, minutes: 90 }], blockedDates: [] },
+      { blockedDatess: [] },
+    ]) {
+      const response = await setConfig(venueId, body);
+      expect(response.status, JSON.stringify(body)).toBe(400);
+      expect((await response.json()).code).toBe("invalid_request");
+    }
+    expect(await getConfig(venueId)).toMatchObject({
+      leadTimeMinutes: 15,
+      blockedDates: [{ from: "2026-12-25", to: "2026-12-25" }],
+      turnTimes: initial.turnTimes,
+    });
+
+    const cleared = await setConfig(venueId, { blockedDates: [], turnTimes: [] });
+    expect(cleared.status).toBe(200);
+    expect(await cleared.json()).toMatchObject({ blockedDates: [] });
+    const after = await getConfig(venueId);
+    expect(after.blockedDates).toEqual([]);
+    expect(after).not.toHaveProperty("turnTimes");
+  });
+
   it("round-trips the three settings", async () => {
     const venueId = await seedVenue();
     const res = await setConfig(venueId, {
