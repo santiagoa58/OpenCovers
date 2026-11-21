@@ -116,7 +116,7 @@ describe("reservations", () => {
 
   it("modifies and bumps the version", async () => {
     await seedVenue("modify");
-    const created = await createReservation(db, "modify", input, "k1");
+    const created = await createReservation(db, "modify", { ...input, tableIds: ["2"] }, "k1");
     if (!created.ok) throw new Error("create failed");
     const m1 = await modifyReservation(db, "modify", created.id, { partySize: 3 }, "k2");
     const m2 = await modifyReservation(db, "modify", created.id, { partySize: 4 }, "k3");
@@ -126,12 +126,40 @@ describe("reservations", () => {
 
   it("does not bump the version on a no-op modify", async () => {
     await seedVenue("modify-noop");
-    const created = await createReservation(db, "modify-noop", input, "k1");
+    const created = await createReservation(db, "modify-noop", { ...input, tableIds: ["2"] }, "k1");
     if (!created.ok) throw new Error("create failed");
     const changed = await modifyReservation(db, "modify-noop", created.id, { partySize: 3 }, "k2");
     expect(changed).toEqual({ ok: true, id: created.id, version: 2 });
     const noop = await modifyReservation(db, "modify-noop", created.id, { partySize: 3 }, "k3");
     expect(noop).toEqual({ ok: true, id: created.id, version: 2 });
+  });
+
+  it("lets staff correct the guest name and arrival time while preserving table occupancy", async () => {
+    await seedVenue("staff-edit");
+    const created = await createReservation(db, "staff-edit", input, "edit-k1");
+    if (!created.ok) throw new Error("create failed");
+    const changed = await modifyReservation(db, "staff-edit", created.id,
+      { guestName: "Updated Name", time: "19:00" }, "edit-k2");
+    expect(changed).toEqual({ ok: true, id: created.id, version: 2 });
+    const reservation = await getReservation(db, "staff-edit", created.id);
+    expect(reservation?.guestName).toBe("Updated Name");
+    expect(reservation?.time).toBe("19:00");
+    expect((await getFloorPlan(db, "staff-edit", "2026-11-12", "19:00")).find(t => t.id === "1")?.occupied).toBe(true);
+    const next = await createReservation(db, "staff-edit", input, "edit-k3");
+    expect(next.ok).toBe(true);
+  });
+
+  it("refuses edits that exceed a table's capacity or overlap other bookings", async () => {
+    await seedVenue("staff-edit-invalid");
+    const created = await createReservation(db, "staff-edit-invalid", input, "edit-invalid-k1");
+    if (!created.ok) throw new Error("create failed");
+    expect(await modifyReservation(db, "staff-edit-invalid", created.id,
+      { partySize: 3 }, "edit-invalid-k2")).toEqual({ ok: false, code: "party_size_too_large" });
+    const next = await createReservation(db, "staff-edit-invalid",
+      { ...input, time: "19:00", tableIds: ["1"] }, "edit-invalid-k3");
+    expect(next.ok).toBe(true);
+    expect(await modifyReservation(db, "staff-edit-invalid", created.id,
+      { time: "19:30" }, "edit-invalid-k4")).toEqual({ ok: false, code: "slot_taken" });
   });
 
   it("double-books at most once under concurrency", async () => {
