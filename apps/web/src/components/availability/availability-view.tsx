@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CalendarXIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { DayNav } from "@/components/day-nav";
 import { EmptyState } from "@/components/empty-state";
-import { LoadError } from "@/components/load-error";
+import { AsyncContent } from "@/components/async-content";
 import { canEditSetup, useNavigation } from "@/components/layout/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -71,24 +71,27 @@ export function AvailabilityView({ venueId }: { venueId: string }) {
         }
       />
 
-      {isPending ? (
-        <Skeleton className="h-64 w-full" />
-      ) : isError && !data ? (
-        <LoadError what={t("availability.loadWhat")} error={error} retrying={isRefetching} onRetry={() => void refetch()} />
-      ) : services.length === 0 ? (
-        <EmptyState
-          icon={CalendarXIcon}
-          title={t("availability.empty.title")}
-          description={t("availability.empty.description")}
-          action={
-            nav && canEditSetup(nav.role) ? (
+      <AsyncContent
+        loading={isPending}
+        error={isError && !data ? error : null}
+        retrying={isRefetching}
+        onRetry={() => void refetch()}
+        what={t("availability.loadWhat")}
+        empty={services.length === 0}
+        loadingContent={<Skeleton className="h-64 w-full" />}
+        emptyContent={
+          <EmptyState
+            icon={CalendarXIcon}
+            title={t("availability.empty.title")}
+            description={t("availability.empty.description")}
+            action={nav && canEditSetup(nav.role) && (
               <Button className="mt-2" onClick={() => nav.goTo("setup", "services")}>
                 {t("availability.empty.action")}
               </Button>
-            ) : undefined
-          }
-        />
-      ) : (
+            )}
+          />
+        }
+      >
         <div className="space-y-6">
           {services.map(([service, slots]) => (
             <ServiceSlots
@@ -102,7 +105,7 @@ export function AvailabilityView({ venueId }: { venueId: string }) {
             />
           ))}
         </div>
-      )}
+      </AsyncContent>
 
       <NewReservationDialog
         venueId={venueId}
