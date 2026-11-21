@@ -6,7 +6,7 @@ const role = z.enum(["read", "write", "admin"]);
 
 export const createVenueSchema = z.strictObject({
   name: z.string().trim().min(1),
-  timezone: z.string().optional(),
+  timezone: z.string().nullable().optional(),
 });
 
 export const transferCreatorSchema = z.strictObject({
