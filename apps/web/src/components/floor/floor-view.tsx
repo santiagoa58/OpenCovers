@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
 import { FloorCanvas } from "@/components/floor/floor-canvas";
 import { FloorSkinToggle } from "@/components/floor/floor-skin-toggle";
+import { SeatingTimeline } from "@/components/floor/seating-timeline";
 import { MoveDialog } from "@/components/floor/move-dialog";
 import { useFloor } from "@/hooks/use-floor";
 import { useFloorItems } from "@/hooks/use-floor-items";
@@ -85,6 +86,13 @@ export function FloorView({ venueId }: { venueId: string }) {
           </Button>
         </div>
       </div>
+
+      <SeatingTimeline
+        venueId={venueId}
+        date={date}
+        time={time}
+        onSelectTime={setTime}
+      />
 
       {tables.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
