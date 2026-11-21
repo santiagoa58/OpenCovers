@@ -134,6 +134,7 @@ export const MAX_NOTICE_NAME = 80;
 
 /** A guest-typed name as one safe line: control characters and line breaks become spaces, and it is cut. */
 export function noticeName(raw: string | undefined): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Email header safety intentionally strips Unicode control characters.
   const line = (raw ?? "").replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim();
   const chars = [...line];
   return chars.length > MAX_NOTICE_NAME ? `${chars.slice(0, MAX_NOTICE_NAME - 1).join("").trimEnd()}…` : line;
