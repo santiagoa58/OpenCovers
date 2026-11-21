@@ -6,6 +6,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "quality:check": "node scripts/check-architecture.mjs",
+    "quality:snapshot": "node scripts/check-architecture.mjs --snapshot",
     "test": "vitest run",
     "preview": "vite preview"
   },
