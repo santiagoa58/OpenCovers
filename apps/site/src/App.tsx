@@ -11,7 +11,7 @@ export default function App() {
   useEffect(() => {
     const els = document.querySelectorAll<HTMLElement>(".rv");
     if (!("IntersectionObserver" in window)) {
-      els.forEach((e) => e.classList.add("in"));
+      els.forEach((e) => { e.classList.add("in"); });
       return;
     }
     const io = new IntersectionObserver(
@@ -25,7 +25,7 @@ export default function App() {
       },
       { rootMargin: "0px 0px -8% 0px", threshold: 0.05 },
     );
-    els.forEach((e) => io.observe(e));
+    els.forEach((e) => { io.observe(e); });
     return () => io.disconnect();
   }, []);
 
