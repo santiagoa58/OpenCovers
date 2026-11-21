@@ -23,13 +23,13 @@ export const roleChangeSchema = z.strictObject({ role });
 export const invitationTokenSchema = z.strictObject({ token: z.string().min(1) });
 
 export const instanceKeySchema = z.strictObject({
-  key: z.string(),
-  principal: z.string(),
+  key: z.string().min(1),
+  principal: z.string().min(1),
   role,
   venues: z.array(z.string()).optional(),
 });
 
-export const instanceKeyRevokeSchema = z.strictObject({ key: z.string() });
+export const instanceKeyRevokeSchema = z.strictObject({ key: z.string().min(1) });
 
 export const venueKeySchema = z.strictObject({
   key: z.string().min(1),
@@ -37,13 +37,13 @@ export const venueKeySchema = z.strictObject({
   role: z.enum(["read", "write"]),
 });
 
-export const venueKeyRevokeSchema = z.strictObject({ hash: z.string() });
+export const venueKeyRevokeSchema = z.strictObject({ hash: z.string().min(1) });
 
 export const mergeGuestSchema = z.strictObject({ intoGuestId: z.string().min(1) });
 
 export const erasureSchema = z.strictObject({
-  guestId: z.string().optional(),
-  principal: z.string().optional(),
+  guestId: z.string().min(1).optional(),
+  principal: z.string().min(1).optional(),
 });
 
 export const blocklistSubjectSchema = z.strictObject({
