@@ -15,7 +15,7 @@ interface TimeFieldProps {
 const MINUTES = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"));
 const HOURS_24 = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
 const HOURS_12 = Array.from({ length: 12 }, (_, hour) => String(hour + 1));
-const SELECT_CLASS = "h-9 min-w-0 rounded-md border border-input bg-background px-1.5 text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
+const SELECT_CLASS = "h-11 sm:h-9 min-w-0 rounded-md border border-input bg-background px-1.5 text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50";
 
 /** Browser-independent time control. Only HH:mm values reach state and the API. */
 export function TimeField({ id, label, value, onChange, onBlur, disabled, className }: TimeFieldProps) {

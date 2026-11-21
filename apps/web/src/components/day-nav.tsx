@@ -10,7 +10,7 @@ export function DayNav({ date, onChange, showToday = true }: { date: string; onC
   const today = todayIso();
   return (
     <>
-      <div className="flex items-center gap-1">
+      <div className="flex w-full min-w-0 items-center gap-1 sm:w-auto">
         <Button
           variant="outline"
           size="icon"
@@ -24,7 +24,7 @@ export function DayNav({ date, onChange, showToday = true }: { date: string; onC
           value={date}
           onChange={(e) => e.target.value && onChange(e.target.value)}
           aria-label={t("agenda.dayNav.date")}
-          className="w-fit"
+          className="min-w-0 flex-1 sm:w-[10.5rem] sm:flex-none"
         />
         <Button
           variant="outline"
