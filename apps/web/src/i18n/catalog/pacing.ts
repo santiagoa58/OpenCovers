@@ -2,10 +2,10 @@ import { defineMessages } from "../define";
 
 export default defineMessages({
   en: {
-    "pacing.title": "Pacing",
+    "pacing.title": "Booking load",
     "pacing.subtitle": "Covers booked versus capacity, per time slot.",
     "pacing.floorHint": "Select a time to inspect table reservations and guest details below.",
-    "pacing.loadWhat": "pacing",
+    "pacing.loadWhat": "booking load",
     "pacing.empty.title": "No services configured",
     "pacing.empty.description": "Add services under Settings to see covers versus capacity.",
     "pacing.empty.action": "Add services",
@@ -20,10 +20,10 @@ export default defineMessages({
     "pacing.hint.high": "{percent}% or more",
   },
   es: {
-    "pacing.title": "Ritmo",
+    "pacing.title": "Carga de reservas",
     "pacing.subtitle": "Cubiertos reservados frente a capacidad, por franja horaria.",
     "pacing.floorHint": "Selecciona una hora para ver las mesas reservadas y los detalles de los clientes.",
-    "pacing.loadWhat": "el ritmo",
+    "pacing.loadWhat": "la carga de reservas",
     "pacing.empty.title": "No hay servicios configurados",
     "pacing.empty.description": "Añade servicios en Ajustes para ver los cubiertos frente a la capacidad.",
     "pacing.empty.action": "Añadir servicios",

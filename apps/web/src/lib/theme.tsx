@@ -1,35 +1,60 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type Theme = "light" | "dark";
+export type ThemePreference = Theme | "system";
 
 const STORAGE_KEY = "theme";
+const MEDIA_QUERY = "(prefers-color-scheme: dark)";
 
-function readTheme(): Theme {
-  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+function readPreference(): ThemePreference {
+  try {
+    const value = localStorage.getItem(STORAGE_KEY);
+    return value === "light" || value === "dark" ? value : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function systemPrefersDark(): boolean {
+  return window.matchMedia?.(MEDIA_QUERY).matches ?? false;
 }
 
 interface ThemeContextValue {
+  theme: ThemePreference;
   resolvedTheme: Theme;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: ThemePreference) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(readTheme);
+  const [theme, setThemeState] = useState<ThemePreference>(readPreference);
+  const [systemDark, setSystemDark] = useState(systemPrefersDark);
+  const resolvedTheme: Theme = theme === "system" ? (systemDark ? "dark" : "light") : theme;
 
-  const setTheme = useCallback((next: Theme) => {
-    document.documentElement.classList.toggle("dark", next === "dark");
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+  }, [resolvedTheme]);
+
+  useEffect(() => {
+    const media = window.matchMedia?.(MEDIA_QUERY);
+    if (!media) return;
+    const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  const setTheme = useCallback((next: ThemePreference) => {
     try {
-      localStorage.setItem(STORAGE_KEY, next);
+      if (next === "system") localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, next);
     } catch {
-      // Storage can be blocked. The choice then lasts for this session only.
+      // Without storage the setting applies until this session ends.
     }
     setThemeState(next);
   }, []);
 
-  const value = useMemo(() => ({ resolvedTheme: theme, setTheme }), [theme, setTheme]);
-
+  const value = useMemo(() => ({ theme, resolvedTheme, setTheme }), [theme, resolvedTheme, setTheme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
