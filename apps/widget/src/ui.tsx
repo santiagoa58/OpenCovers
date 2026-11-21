@@ -20,6 +20,11 @@ export function Section({ title, focus = false, children }: { title: string; foc
   );
 }
 
+export const chipClass =
+  "inline-flex min-h-11 min-w-16 flex-col items-center justify-center rounded-oc border border-border bg-surface " +
+  "px-3 py-1 peer-checked:border-primary peer-checked:bg-primary peer-checked:text-on-primary " +
+  "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
+
 export const inputClass =
   "block w-full rounded-oc border border-border bg-background px-3 py-2 text-base text-text " +
   "focus:outline-2 focus:outline-offset-1 focus:outline-primary aria-invalid:border-danger";
