@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n";
 import { ReservationAnnotations } from "./reservation-annotations";
@@ -19,9 +19,9 @@ export function StaffNoteField({
   const t = useT();
   const hintId = `${id}-hint`;
   return (
-    <Field>
+    <div className="space-y-2">
       <ReservationAnnotations commentary={originalCommentary} includeStaffNotes={false} />
-      <FieldLabel htmlFor={id}>{t("reservation.note")}</FieldLabel>
+      <Label htmlFor={id}>{t("reservation.note")}</Label>
       <Textarea
         id={id}
         maxLength={maxLength}
@@ -29,7 +29,7 @@ export function StaffNoteField({
         aria-describedby={hintId}
         {...inputProps}
       />
-      <FieldDescription id={hintId}>{t("reservation.noteHint", { max: maxLength })}</FieldDescription>
-    </Field>
+      <p id={hintId} className="text-sm text-muted-foreground">{t("reservation.noteHint", { max: maxLength })}</p>
+    </div>
   );
 }
