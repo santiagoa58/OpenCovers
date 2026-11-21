@@ -173,6 +173,7 @@ describe("online booking settings", () => {
       [],
       "x",
       { bookingKey: "pk_AAAAAAAAAAAAAAAAAAAAAA" },
+      { enabled: true, bookingKey: "pk_AAAAAAAAAAAAAAAAAAAAAA" },
       { waitlistEnabld: true },
       { enabled: true, waitlistEnabld: true },
       { allowedOrigins: ["http://example.com"] },
@@ -299,7 +300,7 @@ describe("online booking settings", () => {
     expect(await read()).toEqual(before);
   });
 
-  it("accepts the upper bounds and ignores bookingKey in the body", async () => {
+  it("accepts the upper bounds while rejecting attempts to assign the read-only bookingKey", async () => {
     const res = await put("oa", "oa-admin", {
       minPartySize: 100,
       maxPartySize: 100,
@@ -308,7 +309,6 @@ describe("online booking settings", () => {
       maxAdvanceDays: 1000,
       maxOpenBookingsPerContact: 20,
       theme: { radius: 24 },
-      bookingKey: "pk_AAAAAAAAAAAAAAAAAAAAAA",
     });
     expect(res.status).toBe(200);
     expect((await res.json()).bookingKey).toBeNull();
