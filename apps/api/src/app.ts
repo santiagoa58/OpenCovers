@@ -24,6 +24,7 @@ import { auth, mcpRemote, trustedOrigins } from "./lib/auth";
 import { getReservationTrace } from "./lib/reservation-trace";
 import { registerRoomRoutes } from "./http/room-routes";
 import { staffReservationSchema, staffWalkInSchema, staffWaitlistSchema, staffModifySchema, staffStatusSchema } from "./http/staff-reservation-schemas";
+import { createVenueSchema, transferCreatorSchema, invitationSchema, roleChangeSchema, invitationTokenSchema, instanceKeySchema, instanceKeyRevokeSchema, venueKeySchema, venueKeyRevokeSchema, mergeGuestSchema, erasureSchema } from "./http/admin-schemas";
 import type { AppEnv } from "./http/types";
 import { registerVenueSettingsRoutes } from "./http/venue-settings-routes";
 import { staffOriginGuard } from "./lib/staff-origin";
@@ -44,7 +45,6 @@ import {
 } from "./lib/blocklist";
 import {
   createInvitation,
-  isExpiryHours,
   isInvitationEmail,
   listInvitations,
   invitationUsable,
@@ -597,8 +597,9 @@ app.post("/v1/account/transfer-creator", async (c) => {
   if (c.req.header("apikey")) return error(c, "forbidden");
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.userId !== "string" || body.userId === "") return error(c, "invalid_request");
+  const parsed = transferCreatorSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await transferCreator(db, user.id, body.userId);
   if (!result.ok) return error(c, result.code);
   return c.json({ creator: result.creator });
@@ -610,14 +611,10 @@ app.post("/v1/venues", async (c) => {
   if (!(await mayCreateVenue(db, signupMode(), user.id))) {
     return error(c, "venue_creation_closed");
   }
-  const body = await c.req.json().catch(() => null);
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return error(c, "invalid_request");
-  }
-  if ("id" in body || typeof body.name !== "string" || body.name.trim() === "") {
-    return error(c, "invalid_request");
-  }
-  const timezone = body.timezone ?? undefined;
+  const parsed = createVenueSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  const timezone = body.timezone;
   if (timezone !== undefined && !isValidTimeZone(timezone)) return error(c, "invalid_request");
   const { id } = await createVenue(db, user.id, { name: body.name, timezone });
   return c.json({ venue: { id, name: body.name } }, 201);
@@ -636,14 +633,10 @@ app.get("/v1/venues/:venueId/invitations", adminOnly, staffSessionOnly, async (c
 app.post("/v1/venues/:venueId/invitations", adminOnly, staffSessionOnly, async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (
-    !isRole(body?.role) ||
-    (body.email !== undefined && !isInvitationEmail(body.email)) ||
-    (body.expiresInHours !== undefined && !isExpiryHours(body.expiresInHours))
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = invitationSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  if (body.email !== undefined && !isInvitationEmail(body.email)) return error(c, "invalid_request");
   const { invitation, token } = await createInvitation(db, c.req.param("venueId"), user.id, {
     role: body.role,
     email: body.email,
@@ -673,8 +666,9 @@ app.get("/v1/venues/:venueId/members", adminOnly, staffSessionOnly, async (c) =>
 app.patch("/v1/venues/:venueId/members/:userId", adminOnly, staffSessionOnly, async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (!isRole(body?.role)) return error(c, "invalid_request");
+  const parsed = roleChangeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await changeMemberRole(
     db,
     c.req.param("venueId"),
@@ -787,10 +781,9 @@ app.delete(`${BLOCKLIST}/:entryId`, adminOnly, staffSessionOnly, queryOnly(), as
 app.post("/v1/invitations/redeem", async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.token !== "string" || body.token === "") {
-    return error(c, "invalid_request");
-  }
+  const parsed = invitationTokenSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const membership = await redeemInvitation(db, body.token, user);
   if (!membership) return error(c, "invalid_invitation");
   return c.json({ membership });
@@ -799,10 +792,9 @@ app.post("/v1/invitations/redeem", async (c) => {
 // Whether an invitation link still works, so the staff app can say so before asking for an account. Public like the
 // sign-up it precedes, it spends the same budget as a redemption and answers `valid` and nothing else.
 app.post("/v1/invitations/check", async (c) => {
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.token !== "string" || body.token === "") {
-    return error(c, "invalid_request");
-  }
+  const parsed = invitationTokenSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   return c.json({ valid: await invitationUsable(db, body.token) });
 });
 
@@ -816,18 +808,10 @@ app.get("/v1/auth/keys", async (c) => {
 app.post("/v1/auth/keys", async (c) => {
   const admin = await authorizeAdmin(c);
   if (admin instanceof Response) return admin;
-  const body = await c.req.json();
-  if (
-    typeof body.key !== "string" ||
-    typeof body.principal !== "string" ||
-    !isRole(body.role)
-  ) {
-    return error(c, "invalid_request");
-  }
-  const venues = body.venues === undefined ? ["*"] : body.venues;
-  if (!Array.isArray(venues) || venues.some((v: unknown) => typeof v !== "string")) {
-    return error(c, "invalid_request");
-  }
+  const parsed = instanceKeySchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  const venues = body.venues ?? ["*"];
   await addKey(db, body.key, body.principal, venues, body.role);
   return c.json({ ok: true });
 });
@@ -835,8 +819,9 @@ app.post("/v1/auth/keys", async (c) => {
 app.delete("/v1/auth/keys", async (c) => {
   const admin = await authorizeAdmin(c);
   if (admin instanceof Response) return admin;
-  const body = await c.req.json();
-  if (typeof body.key !== "string") return error(c, "invalid_request");
+  const parsed = instanceKeyRevokeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   await revokeKey(db, body.key);
   return c.json({ ok: true });
 });
@@ -1162,16 +1147,9 @@ app.get("/v1/venues/:venueId/keys", adminOnly, async (c) => {
 
 app.post("/v1/venues/:venueId/keys", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (
-    typeof body.key !== "string" ||
-    body.key === "" ||
-    typeof body.principal !== "string" ||
-    body.principal === "" ||
-    (body.role !== "read" && body.role !== "write")
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = venueKeySchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   await addVenueKey(db, venueId, body.key, body.principal, body.role, await creatorId(c));
   const keys = await listVenueKeys(db, venueId);
   return c.json({ keys }, 201);
@@ -1179,8 +1157,9 @@ app.post("/v1/venues/:venueId/keys", adminOnly, async (c) => {
 
 app.delete("/v1/venues/:venueId/keys", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (typeof body.hash !== "string") return error(c, "invalid_request");
+  const parsed = venueKeyRevokeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   await revokeVenueKey(db, venueId, body.hash);
   const keys = await listVenueKeys(db, venueId);
   return c.json({ keys });
@@ -1220,10 +1199,9 @@ app.post("/v1/venues/:venueId/guests/:guestId/merge", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.intoGuestId !== "string" || body.intoGuestId === "") {
-    return error(c, "invalid_request");
-  }
+  const parsed = mergeGuestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await mergeGuest(db, venueId, c.req.param("guestId"), body.intoGuestId, key, c.get("principal"));
   return guestResponse(c, result, venueId);
 });
@@ -1288,7 +1266,11 @@ registerVenueSettingsRoutes(app, adminOnly, creatorId);
 
 app.post("/v1/venues/:venueId/erasure", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
+  const parsed = erasureSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success || (parsed.data.guestId === undefined && parsed.data.principal === undefined)) {
+    return error(c, "invalid_request");
+  }
+  const body = parsed.data;
   const result = await erase(db, venueId, body.guestId, body.principal, c.get("principal") as string, c.get("origin"));
   return c.json(result);
 });
@@ -1316,10 +1298,6 @@ async function authorizeAdmin(c: Context<AppEnv>): Promise<{ principal: string }
       : error(c, "forbidden");
   }
   return { principal: admin.principal };
-}
-
-function isRole(value: unknown): value is "read" | "write" | "admin" {
-  return value === "read" || value === "write" || value === "admin";
 }
 
 function isDate(value: string): boolean {
