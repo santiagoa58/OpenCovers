@@ -1,6 +1,7 @@
 import type { PillTone } from "@/components/pill";
 import { t, type MessageKey } from "@/i18n";
 import { dateTime } from "@/lib/date";
+import type { TimeFormat } from "@/stores/ui-store";
 
 export type TraceChannel = "widget" | "staff" | "api" | "mcp";
 
@@ -104,8 +105,9 @@ export function toTrace(dto: ReservationTraceDto): Trace {
   };
 }
 
-export function traceTime(iso: string): string {
+export function traceTime(iso: string, format?: TimeFormat): string {
   return dateTime(iso, {
+    ...(format ? { hour12: format === "12h" } : {}),
     day: "numeric",
     month: "short",
     hour: "2-digit",

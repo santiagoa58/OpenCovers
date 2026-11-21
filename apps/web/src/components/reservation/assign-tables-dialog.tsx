@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useTables } from "@/hooks/use-tables";
 import { api, type Reservation } from "@/lib/api";
 import { useT } from "@/i18n";
+import { useTimeDisplay } from "@/lib/time-format";
 import { errorMessage } from "@/lib/error-message";
 
 export function AssignTablesDialog({
@@ -26,6 +27,7 @@ export function AssignTablesDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const queryClient = useQueryClient();
   const { data } = useTables(venueId);
   const tables = data?.tables ?? [];
@@ -79,7 +81,7 @@ export function AssignTablesDialog({
             {reservation
               ? reservation.guest.name
                 ? t("reservation.assign.summaryNamed", {
-                    time: reservation.time,
+                    time: displayTime(reservation.time),
                     count: reservation.partySize,
                     name: reservation.guest.name,
                   })

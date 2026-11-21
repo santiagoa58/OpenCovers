@@ -14,6 +14,7 @@ import { longDate, todayIso } from "@/lib/date";
 import type { AvailabilitySlot } from "@/lib/api";
 import { SlotExplanation } from "@/components/availability/slot-explanation";
 import { NewReservationDialog } from "@/components/reservation/new-reservation-dialog";
+import { useTimeDisplay } from "@/lib/time-format";
 
 export function AvailabilityView({ venueId }: { venueId: string }) {
   const t = useT();
@@ -130,6 +131,7 @@ function ServiceSlots({
   onSelect: (time: string) => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const free = slots.filter((s) => s.available).length;
   return (
     <section className="space-y-2">
@@ -149,7 +151,7 @@ function ServiceSlots({
               onClick={() => onSelect(slot.time)}
               className="h-10 border-primary/30 tabular-nums text-primary hover:border-primary hover:bg-accent"
             >
-              {slot.time}
+              {displayTime(slot.time)}
             </Button>
           ) : (
             <SlotExplanation

@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTables } from "@/hooks/use-tables";
 import { useT } from "@/i18n";
 import { api, COMMENTARY_MAX } from "@/lib/api";
+import { useTimeDisplay } from "@/lib/time-format";
 
 interface FormValues {
   partySize: number;
@@ -44,6 +45,7 @@ export function NewReservationDialog({
   onOpenChange,
 }: NewReservationDialogProps) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const queryClient = useQueryClient();
   const { data } = useTables(venueId);
   const tables = data?.tables ?? [];
@@ -131,7 +133,7 @@ export function NewReservationDialog({
         <DialogHeader>
           <DialogTitle>{t("reservation.new.title")}</DialogTitle>
           <DialogDescription>
-            {t("reservation.new.description", { date, time })}
+            {t("reservation.new.description", { date, time: displayTime(time) })}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,7 +184,7 @@ export function NewReservationDialog({
                       disabled={booked || tableAvailability.isPending || tableAvailability.isError}
                       aria-label={`${tbl.name} · ${tbl.seats} · ${booked ? t("reservation.tableAvailability.booked") : t("reservation.tableAvailability.free")}`}
                       title={booked && status?.reservedUntil
-                        ? t("reservation.tableAvailability.until", { time: status.reservedUntil })
+                        ? t("reservation.tableAvailability.until", { time: displayTime(status.reservedUntil) })
                         : undefined}
                       onClick={() => toggleTable(tbl.id)}
                       className={booked ? "opacity-60" : ""}

@@ -25,6 +25,8 @@ import { formatDays } from "@/lib/weekdays";
 import { ServiceFormDialog } from "./service-form-dialog";
 import { TableFormDialog } from "./table-form-dialog";
 import { VenueSettings } from "./venue-settings";
+import { TimeFormatSettings } from "./time-format-settings";
+import { useTimeDisplay } from "@/lib/time-format";
 import { BookingPolicyCard } from "./booking-policy-card";
 import { PublicProfileCard } from "./public-profile-card";
 import { OnlineBookingCard } from "./online-booking-card";
@@ -177,6 +179,7 @@ export function SetupView({ venueId, role }: { venueId: string; role?: Role }) {
       case "venue":
         return (
           <>
+            <TimeFormatSettings />
             <VenueSettings venueId={venueId} role={role} />
             <BookingPolicyCard venueId={venueId} role={role} />
           </>
@@ -332,6 +335,7 @@ function TablesSection({ venueId }: { venueId: string }) {
 
 function ServicesSection({ venueId }: { venueId: string }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const queryClient = useQueryClient();
   const { data, isPending, isError, error, isRefetching, refetch } = useServices(venueId);
   const [open, setOpen] = useState(false);
@@ -384,7 +388,7 @@ function ServicesSection({ venueId }: { venueId: string }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Pill tone="info">
-                    {sv.openStart}–{sv.openEnd}
+                    {displayTime(sv.openStart)}–{displayTime(sv.openEnd)}
                   </Pill>
                   <RowActions
                     label={sv.name}

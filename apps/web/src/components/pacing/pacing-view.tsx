@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePacing } from "@/hooks/use-pacing";
 import type { PacingSlot } from "@/lib/api";
 import { useT } from "@/i18n";
+import { useTimeDisplay } from "@/lib/time-format";
 import {
   HIGH_FROM,
   MEDIUM_FROM,
@@ -36,6 +37,7 @@ export function PacingView({
   onSelectTime: (time: string) => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const nav = useNavigation();
   const { data, isPending, isError, error, isRefetching, refetch } = usePacing(venueId, date);
 
@@ -48,7 +50,7 @@ export function PacingView({
           <h2 className="font-display text-xl">{t("pacing.title")}</h2>
           <p className="text-sm text-muted-foreground">{t("pacing.floorHint")}</p>
         </div>
-        <span className="text-sm font-medium tabular-nums">{t("floor.timeline.selected", { time })}</span>
+        <span className="text-sm font-medium tabular-nums">{t("floor.timeline.selected", { time: displayTime(time) })}</span>
       </div>
 
       {isPending ? (
@@ -78,7 +80,7 @@ export function PacingView({
                   <h2 className="font-display text-lg first-letter:uppercase">{service.service}</h2>
                   <span className="text-sm text-muted-foreground tabular-nums">
                     {peak
-                      ? t("pacing.peak", { covers: peak.covers, capacity: peak.capacity, time: peak.time })
+                      ? t("pacing.peak", { covers: peak.covers, capacity: peak.capacity, time: displayTime(peak.time) })
                       : t("pacing.nothingBooked")}
                   </span>
                 </div>
@@ -139,6 +141,7 @@ function SlotColumn({
   onSelectTime: (time: string) => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const level = pacingLevel(slot);
   const ratio = Math.min(pacingRatio(slot), 1);
   const style = LEVEL[level];
@@ -147,7 +150,7 @@ function SlotColumn({
       type="button"
       data-testid={`floor-slot-${slot.time}`}
       aria-pressed={selected}
-      aria-label={t("pacing.slotTitle", { time: slot.time, covers: slot.covers, capacity: slot.capacity })}
+      aria-label={t("pacing.slotTitle", { time: displayTime(slot.time), covers: slot.covers, capacity: slot.capacity })}
       onClick={() => onSelectTime(slot.time)}
       className={cn(
         "flex flex-col items-center gap-1.5 rounded-md p-1 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary",
@@ -166,7 +169,7 @@ function SlotColumn({
       <div className={cn("text-xs font-semibold tabular-nums", style.text)}>
         {slot.covers}/{slot.capacity}
       </div>
-      <div className="text-[11px] text-muted-foreground tabular-nums">{slot.time}</div>
+      <div className="text-[11px] text-muted-foreground tabular-nums">{displayTime(slot.time)}</div>
     </button>
   );
 }
