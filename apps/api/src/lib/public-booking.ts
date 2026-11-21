@@ -203,7 +203,6 @@ export function parseSelfServiceModify(body: unknown): SelfServiceModify | null 
   if (MODIFY_REFUSED_FIELDS.some((field) => body[field] !== undefined)) return null;
   const { version, partySize, commentary, guest } = body;
   if (typeof version !== "number" || !Number.isInteger(version) || version < 1) return null;
-  if (partySize === undefined && commentary === undefined && guest === undefined) return null;
   if (partySize !== undefined && (typeof partySize !== "number" || !Number.isInteger(partySize) || partySize < 1)) {
     return null;
   }
@@ -211,6 +210,8 @@ export function parseSelfServiceModify(body: unknown): SelfServiceModify | null 
   if (guest !== undefined && (!isObject(guest) || Object.keys(guest).some((k) => k !== "consent"))) return null;
   const consent = isObject(guest) ? guest.consent : undefined;
   if (consent !== undefined && consent !== "unknown" && consent !== "granted") return null;
+  // An empty guest object is not an update; require at least one actionable field.
+  if (partySize === undefined && commentary === undefined && consent === undefined) return null;
   return {
     version,
     partySize: partySize as number | undefined,
