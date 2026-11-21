@@ -1,9 +1,10 @@
-import { ClipboardListIcon, MessageSquareTextIcon, StarIcon } from "lucide-react";
+import { ClipboardListIcon, StarIcon } from "lucide-react";
 import { useQueries } from "@tanstack/react-query";
 import { cn } from "cn";
 import { EmptyState } from "@/components/empty-state";
 import { LoadError } from "@/components/load-error";
 import { Pill, type PillTone } from "@/components/pill";
+import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAgenda } from "@/hooks/use-agenda";
 import { usePacing } from "@/hooks/use-pacing";
@@ -11,6 +12,7 @@ import { useTables } from "@/hooks/use-tables";
 import { useT, type MessageKey } from "@/i18n";
 import { api, type FloorTable, type Reconfirmation } from "@/lib/api";
 import { longDate } from "@/lib/date";
+import { parseReservationCommentary } from "@/lib/reservation-commentary";
 import { buildPreShift, LARGE_PARTY_MIN, rowsForFloorTime, totalCovers, type PreShiftRow } from "@/lib/pre-shift";
 import { useTimeDisplay } from "@/lib/time-format";
 
@@ -72,7 +74,7 @@ export function PreShiftView({
     pacing.data?.pacing ?? [],
   );
   const largeCount = rows.filter((r) => r.large).length;
-  const noteCount = rows.filter((r) => r.commentary).length;
+  const noteCount = rows.filter((r) => parseReservationCommentary(r.commentary).note !== null).length;
   const reservedIds = new Set(floorTables.filter((table) => table.occupied).map((table) => table.reservationId));
 
   return (
@@ -243,15 +245,7 @@ function PreShiftRowView({ row, selectedDate, reservedAtTime }: { row: PreShiftR
               </span>
             ) : null}
           </div>
-          {commentary && (
-            <p
-              data-slot="booking-note"
-              className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-sm"
-            >
-              <MessageSquareTextIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              {commentary}
-            </p>
-          )}
+          <ReservationAnnotations commentary={commentary} />
         </div>
       </div>
     </li>
