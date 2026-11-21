@@ -10,12 +10,13 @@ describe("Layout in Spanish", () => {
 
   it("names the sidebar entries in Spanish", () => {
     renderWithApp(<Sidebar active="agenda" onSelect={() => {}} role="admin" />);
-    for (const name of ["Previo al servicio", "Plano de sala", "Disponibilidad", "Lista de espera", "Ritmo", "Ajustes", "Equipo"]) {
+    for (const name of ["Previo al servicio", "Plano de sala", "Disponibilidad", "Lista de espera", "Ajustes", "Equipo"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
     expect(screen.getByRole("button", { name: "Contraer barra lateral" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Waitlist" })).not.toBeInTheDocument();
     expect(viewLabel("waitlist")).toBe("Lista de espera");
+    expect(screen.queryByRole("button", { name: "Ritmo" })).not.toBeInTheDocument();
   });
 
   it("writes the load error as a whole translated message", () => {
