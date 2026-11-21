@@ -1,6 +1,6 @@
 import { Pill, type PillTone } from "@/components/pill";
 import { useT, type MessageKey } from "@/i18n";
-import { type Reconfirmation } from "@/lib/api";
+import type { Reconfirmation } from "@/lib/api";
 
 const RECONFIRMATION: Record<Exclude<Reconfirmation, "none">, { labelKey: MessageKey; tone: PillTone }> = {
   requested: { labelKey: "preshift.reconfirmation.requested", tone: "info" },
