@@ -33,12 +33,7 @@ export const tableSchema = z.object({
 
 export const tableLayoutSchema = z.object(layoutFields);
 
-const weekdaysSchema = z
-  .array(z.number().int().min(1).max(7))
-  .min(1)
-  .max(7)
-  .refine((days) => new Set(days).size === days.length, "Weekdays must be unique")
-  .transform((days) => [...days].sort((a, b) => a - b));
+const weekdaysSchema = z.array(z.number().int().min(1).max(7)).min(1).max(7);
 
 export const serviceSchema = z.object({
   name: z.string().min(1),
