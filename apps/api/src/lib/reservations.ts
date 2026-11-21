@@ -129,6 +129,8 @@ export interface Reservation {
   zone: string;
   partySize: number;
   status: string;
+  /** Actual stored table allocation, which can differ from the venue's new default. */
+  durationMinutes: number;
   version: number;
   bookedVia: string;
   basis: string;
@@ -746,6 +748,7 @@ function toReservation(
     zone: row.zone,
     partySize: row.partySize,
     status: row.status,
+    durationMinutes: Math.round((row.endsAt.getTime() - row.startsAt.getTime()) / 60_000),
     version: row.version,
     bookedVia: row.bookedVia,
     basis: row.basis,

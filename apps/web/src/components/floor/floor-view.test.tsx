@@ -389,4 +389,30 @@ describe("FloorView", () => {
     expect(warning).toHaveTextContent("30 min overlap");
   });
 
+  it("distinguishes saved short allocations and immediate turns from real table conflicts", async () => {
+    mockApi({
+      [FLOOR]: { body: { tables: [table()] } },
+      [ITEMS]: { body: { items: [] } },
+      "GET /v1/venues/v1/tables": { body: { tables: [
+        { id: "t1", name: "Table 1", seats: 2, zone: "", shape: "round" },
+      ] } },
+      "GET /v1/venues/v1/config": { body: { turnTimes: [{ upTo: 1000, minutes: 90 }] } },
+      "GET /v1/venues/v1/agenda": { body: { reservations: [
+        { id: "a", date: "2026-11-21", time: "17:00", durationMinutes: 60, status: "booked", partySize: 2, tables: ["t1"], guest: { name: "First Guest" } },
+        { id: "b", date: "2026-11-21", time: "18:00", durationMinutes: 90, status: "booked", partySize: 2, tables: ["t1"], guest: { name: "Next Guest" } },
+      ] } },
+    });
+    renderWithApp(<FloorView venueId="v1" />);
+    const warning = await screen.findByTestId("floor-planning-conflicts");
+    expect(warning).toHaveTextContent("1 shorter bookings · 1 immediate table turns");
+    await userEvent.click(warning.querySelector("summary")!);
+    expect(warning).toHaveTextContent("Exceptions to the reservation length");
+    expect(warning).toHaveTextContent("First Guest");
+    expect(warning).toHaveTextContent("60 minutes (default 90)");
+    expect(warning).toHaveTextContent("Back-to-back table turnovers");
+    expect(warning).toHaveTextContent("Next Guest");
+    expect(screen.queryByTestId("floor-actual-conflicts")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("floor-peak-parties-warning")).not.toBeInTheDocument();
+  });
+
 });

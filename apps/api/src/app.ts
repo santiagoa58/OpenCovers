@@ -1521,6 +1521,7 @@ function toApi(reservation: any, venueId: string) {
     zone: reservation.zone,
     partySize: reservation.partySize,
     status: reservation.status,
+    durationMinutes: reservation.durationMinutes,
     version: reservation.version,
     bookedVia: reservation.bookedVia,
     basis: reservation.basis,

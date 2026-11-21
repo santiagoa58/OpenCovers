@@ -180,6 +180,8 @@ export interface Reservation {
   service: string;
   partySize: number;
   status: string;
+  /** Minutes currently allocated to this reservation, not necessarily the venue default. */
+  durationMinutes?: number;
   version: number;
   bookedVia: string;
   guest: {
