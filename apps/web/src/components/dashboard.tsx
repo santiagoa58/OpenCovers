@@ -15,7 +15,6 @@ import { FloorView } from "./floor/floor-view";
 import { NavigationProvider, useScrollToSection } from "./layout/navigation";
 import { MobileNav, Sidebar, viewLabel, type ViewId } from "./layout/sidebar";
 import { Topbar } from "./layout/topbar";
-import { PacingView } from "./pacing/pacing-view";
 import { PreShiftView } from "./preshift/pre-shift-view";
 import { SetupView } from "./setup/setup-view";
 import { TeamView } from "./team/team-view";
@@ -121,7 +120,6 @@ export function Dashboard() {
                 {active === "floor" && <FloorView venueId={venueId} />}
                 {active === "availability" && <AvailabilityView venueId={venueId} />}
                 {active === "waitlist" && <WaitlistView venueId={venueId} />}
-                {active === "pacing" && <PacingView venueId={venueId} />}
                 {active === "team" && role === "admin" && <TeamView venueId={venueId} />}
                 {active === "setup" && <SetupView venueId={venueId} role={role} />}
               </>
