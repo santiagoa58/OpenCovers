@@ -21,3 +21,6 @@ desktop.ini
 
 # Claude Code local worktrees and state
 .claude/
+
+# Temporary credentials created by google-github-actions/auth.
+gha-creds-*.json
