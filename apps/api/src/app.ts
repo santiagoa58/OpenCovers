@@ -1133,7 +1133,7 @@ app.post("/v1/venues/:venueId/reservations/:id/status", async (c) => {
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
   const body = await c.req.json();
-  if (body.status !== "seated" && body.status !== "attended" && body.status !== "no_show") {
+  if (body.status !== "booked" && body.status !== "seated" && body.status !== "attended" && body.status !== "no_show") {
     return error(c, "invalid_request");
   }
   const result = await setStatus(db, venueId, id, body.status, key, c.get("origin"));
