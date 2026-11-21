@@ -102,8 +102,6 @@ import { normalizeEmail } from "./demo/normalize";
 import { isCreator, mayCreateVenue, signupMode, transferCreator } from "./lib/signup";
 import { changeMemberRole, listMembers, removeMember } from "./lib/members";
 import {
-} from "./lib/catalog";
-import {
   cancelReservation,
   createReservation,
   explainSlot,
