@@ -12,7 +12,6 @@ import {
 } from "./contact";
 import { recordMembershipAudit } from "./membership-audit";
 import type { Db } from "./memberships";
-import { sandboxBlocklistMax } from "../demo/limits";
 
 export const BLOCKLIST_REASONS = ["no_show", "late_cancellation", "conduct", "other"] as const;
 export type BlocklistReason = (typeof BLOCKLIST_REASONS)[number];
@@ -299,8 +298,7 @@ export async function addToBlocklist(
   return db.transaction(async (tx) => {
     const venue = await venueOf(tx, venueId);
     if (!venue) return { ok: false, code: "venue_not_found" } as const;
-    // A sandbox holds fewer entries than a real venue (ADR-0022). The venue lock below keeps the count exact.
-    const max = Math.min(requestedMax, (await sandboxBlocklistMax(tx, venueId)) ?? requestedMax);
+    const max = requestedMax;
     const resolved = await resolveSubject(tx, venue, subject);
     if (!resolved.ok) return resolved;
 
@@ -424,8 +422,3 @@ export function parseBlocklistSubject(body: unknown): BlocklistSubject | null {
   return typeof contact === "string" && contact.trim() !== "" ? { contact } : null;
 }
 
-/** A missing or null reason is no reason. Undefined means the value is not a reason code. */
-export function parseBlocklistReason(value: unknown): BlocklistReason | null | undefined {
-  if (value === undefined || value === null) return null;
-  return BLOCKLIST_REASONS.find((r) => r === value);
-}

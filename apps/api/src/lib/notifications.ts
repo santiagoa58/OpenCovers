@@ -2,7 +2,6 @@ import { and, count, eq, gt, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { reservations, sentEmails, venues } from "../db/schema";
 import * as schema from "../db/schema";
-import { mailIdentity, mayEmail } from "../demo/limits";
 import { resolveEmailLocale } from "./email-messages";
 import { emailVenue } from "./email-venue";
 import { icsUid } from "./ics";
@@ -52,7 +51,6 @@ export async function notifyReservation(
 
     const to = kind === "notice" ? venue.noticeAddress : reservation.guestContact;
     if (!to) return;
-    if (!(await mayEmail(db, venueId, to))) return;
 
     const already = (
       await db
@@ -86,8 +84,7 @@ export async function notifyReservation(
       },
       locale,
     );
-    const identity = await mailIdentity(db, venueId, venue);
-    await sendEmail(identity.apiKey, identity.from, to, subject, text, html, attachments);
+    await sendEmail(venue.resendApiKey ?? "", venue.fromEmail, to, subject, text, html, attachments);
     await db
       .insert(sentEmails)
       .values({ id: crypto.randomUUID(), venueId, reservationId, kind, version })

@@ -15,7 +15,7 @@ describe("remote MCP switch", () => {
   });
 
   it("checks nothing else while off, so an instance that never turns it on starts as before", () => {
-    expect(mcpRemoteEnabled({ DEMO_MODE: "1", BETTER_AUTH_URL: "http://example.com", NODE_ENV: "production" })).toBe(false);
+    expect(mcpRemoteEnabled({ BETTER_AUTH_URL: "http://example.com", NODE_ENV: "production" })).toBe(false);
   });
 
   it.each([
@@ -24,7 +24,6 @@ describe("remote MCP switch", () => {
     ["no public URL in production", { BETTER_AUTH_URL: undefined, NODE_ENV: "production" }, /https/],
     ["no secret", { BETTER_AUTH_SECRET: undefined }, /BETTER_AUTH_SECRET/],
     ["the public development secret", { BETTER_AUTH_SECRET: "dev-secret-change-me" }, /BETTER_AUTH_SECRET/],
-    ["demo mode", { DEMO_MODE: "1" }, /DEMO_MODE/],
   ])("refuses to start when on with %s", (_case, change, message) => {
     expect(() => mcpRemoteEnabled({ ...READY, ...change })).toThrow(message);
   });

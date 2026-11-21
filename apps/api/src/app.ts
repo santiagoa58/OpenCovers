@@ -1,7 +1,6 @@
 import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
-import { Hono, type MiddlewareHandler } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { and, eq } from "drizzle-orm";
-import { account as authAccounts } from "./db/schema";
 import { bodyLimit } from "hono/body-limit";
 import { db } from "./db/client";
 import {
@@ -23,6 +22,11 @@ import {
 } from "./lib/membership-audit";
 import { auth, mcpRemote, trustedOrigins } from "./lib/auth";
 import { getReservationTrace } from "./lib/reservation-trace";
+import { registerRoomRoutes } from "./http/room-routes";
+import { staffReservationSchema, staffWalkInSchema, staffWaitlistSchema, staffModifySchema, staffStatusSchema } from "./http/staff-reservation-schemas";
+import { createVenueSchema, transferCreatorSchema, invitationSchema, roleChangeSchema, invitationTokenSchema, instanceKeySchema, instanceKeyRevokeSchema, venueKeySchema, venueKeyRevokeSchema, mergeGuestSchema, erasureSchema, blocklistAddSchema, blocklistSubjectSchema } from "./http/admin-schemas";
+import type { AppEnv } from "./http/types";
+import { registerVenueSettingsRoutes } from "./http/venue-settings-routes";
 import { staffOriginGuard } from "./lib/staff-origin";
 import { CHANNEL_HEADER, keyOrigin, sessionOrigin, WIDGET, type Origin } from "./lib/origin";
 import {
@@ -34,14 +38,12 @@ import {
   encodeBlocklistCursor,
   lookupBlocklist,
   pageBlocklist,
-  parseBlocklistReason,
   parseBlocklistSubject,
   removeFromBlocklist,
   type BlocklistCursor,
 } from "./lib/blocklist";
 import {
   createInvitation,
-  isExpiryHours,
   isInvitationEmail,
   listInvitations,
   invitationUsable,
@@ -92,24 +94,8 @@ import {
 } from "./lib/widget-page";
 import { canResend, parseResendEmail, resendLinks } from "./lib/link-resend";
 import { getMembership, listVenuesForUser } from "./lib/memberships";
-import { demoMode } from "./demo/settings";
-import { demoStatus } from "./demo/status";
-import { magicLinkChallenges } from "./demo/magic-link-challenge";
-import { DemoLimitError } from "./demo/limits";
-import { parseConsent, recordConsent } from "./demo/leads";
-import { normalizeEmail } from "./demo/normalize";
 import { isCreator, mayCreateVenue, signupMode, transferCreator } from "./lib/signup";
 import { changeMemberRole, listMembers, removeMember } from "./lib/members";
-import {
-  deleteService,
-  deleteTable,
-  listServices,
-  parseDays,
-  listTables,
-  updateTableLayout,
-  upsertService,
-  upsertTable,
-} from "./lib/catalog";
 import {
   cancelReservation,
   createReservation,
@@ -129,20 +115,15 @@ import {
   searchReservations,
   setStatus,
   walkIn,
+  type Reservation,
+  type WriteResult,
 } from "./lib/reservations";
-import { isConsent } from "./lib/consent";
-import { isCommentary } from "./lib/commentary";
-import { isRating } from "./lib/rating";
-import { isReconfirmation } from "./lib/reconfirmation";
-import { createVenue, erase, getConfig, setConfig } from "./lib/venue";
-import { effectivePublicZones, getOnlineBooking, LOCALES, parseOnlineBookingInput, rotateBookingKey, setOnlineBooking } from "./lib/online-booking";
+import { createVenue, erase } from "./lib/venue";
+import { effectivePublicZones, LOCALES } from "./lib/online-booking";
 import {
   etagMatches,
   etagOf,
   getJsonLd,
-  getProfile,
-  parseProfileInput,
-  setProfile,
 } from "./lib/public-profile";
 import {
   decodeGuestCursor,
@@ -154,22 +135,7 @@ import {
   type GuestCursor,
   type GuestWrite,
 } from "./lib/guests";
-import { toCountryCode } from "./lib/contact";
-import { isMaxActivePerGuest, isMaxAdvanceDays, parseBlockedDates } from "./lib/booking-policy";
-import { parseTurnTimes } from "./lib/turn-times";
 import { notifyReservation } from "./lib/notifications";
-import {
-  addFloorItem,
-  deleteFloorItem,
-  listFloorItems,
-  updateFloorItemLayout,
-} from "./lib/floor-items";
-import {
-  createWebhook,
-  deleteWebhook,
-  listWebhooks,
-  webhookPolicyFromEnv,
-} from "./lib/webhooks";
 import { ERRORS, errorBody, type ErrorCode } from "./lib/errors";
 import { addDays, isCalendarDate, isValidTimeZone, localDateTime } from "./lib/time";
 import {
@@ -178,14 +144,6 @@ import {
   listWaitlist,
   seatWaitlist,
 } from "./lib/waitlist";
-
-type AppEnv = {
-  Variables: {
-    principal: string;
-    role: string;
-    origin: Origin;
-  };
-};
 
 const app = new Hono<AppEnv>();
 const challengeConfig = challengeConfigFromEnv();
@@ -200,7 +158,7 @@ app.use("*", createRateLimiter(rateLimitConfigFromEnv()).middleware);
 
 // Below the limiter, so an oversized body still spends the caller's budget. The widget's largest body is about
 // 2 KB and the staff app's (a config with 366 blocked date ranges) about 20 KB.
-const bodyTooLarge = (c: any) => error(c, "invalid_request");
+const bodyTooLarge = (c: Context<AppEnv>) => error(c, "invalid_request");
 app.use("/v1/public/*", bodyLimit({ maxSize: 16 * 1024, onError: bodyTooLarge }));
 app.use("*", bodyLimit({ maxSize: 256 * 1024, onError: bodyTooLarge }));
 app.use("/v1/*", staffOriginGuard(trustedOrigins));
@@ -215,54 +173,7 @@ if (mcpRemote) {
   app.get("/.well-known/oauth-authorization-server/api/auth", (c) => authServerMetadata(c.req.raw));
 }
 
-// The staff app asks this before it shows a sign-in form (ADR-0022). Demo off: `enabled: false` and nothing else.
-// Signed in with a sandbox: that session's own sandbox, and no one else's.
-app.get("/api/demo/status", async (c) => {
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  c.header("Cache-Control", "no-store");
-  return c.json(await demoStatus(db, session?.user.id ?? null));
-});
-
-// The hosted demo's own routes (ADR-0022, decision 11), outside docs/contract. They answer 404 unless DEMO_MODE=1.
-app.use("/api/demo/*", staffOriginGuard(trustedOrigins));
-
-// ADR-0022, decision 8(a): the proof-of-work challenge a demo magic link needs. Outside the contract, public, rate
-// limited per IP (lib/rate-limit.ts). Issuing says nothing about the address, so it does not touch the accounts.
-// A body with no usable address (missing, oversized, not JSON, whitespace, a list) is a 400.
-app.post("/api/demo/magic-link-challenge", async (c) => {
-  if (!demoMode()) return c.notFound();
-  const length = Number(c.req.header("content-length") ?? Number.NaN);
-  if (!(length > 0 && length <= 4096)) return error(c, "invalid_request");
-  const body = (await c.req.json().catch(() => null)) as { email?: unknown } | null;
-  const email = body?.email;
-  if (typeof email !== "string" || normalizeEmail(email) === null) return error(c, "invalid_request");
-  c.header("Cache-Control", "no-store");
-  return c.json(magicLinkChallenges().issue(email));
-});
-
-// The one way a lead is recorded (audit F7 and F8): the signed-in account says, for its own verified address, that it
-// agrees to be contacted. Nobody can consent for another inbox, because the address is read from the session.
-app.post("/api/demo/consent", async (c) => {
-  if (!demoMode()) return c.json({ code: "not_found" }, 404);
-  const account = await sessionUser(c);
-  if (!account) return error(c, "unauthorized");
-  const consent = parseConsent(await c.req.json().catch(() => null));
-  if (!consent) return error(c, "invalid_request");
-  if (account.emailVerified !== true) return error(c, "forbidden");
-  const [google] = await db
-    .select({ id: authAccounts.id })
-    .from(authAccounts)
-    .where(and(eq(authAccounts.userId, account.id), eq(authAccounts.providerId, "google")))
-    .limit(1);
-  await recordConsent(db, { email: account.email, source: google ? "google" : "magic-link", consent });
-  return c.body(null, 204);
-});
-
-// A sandbox hit one of its caps. A code outside the contract, and only a demo instance can emit it.
 app.onError((err, c) => {
-  if (err instanceof DemoLimitError) {
-    return c.json({ code: "demo_limit_reached", message: "demo_limit_reached", kind: err.kind, retryable: false }, 409);
-  }
   console.error(err);
   return c.text("Internal Server Error", 500);
 });
@@ -308,9 +219,9 @@ const linkOrigin = widgetOrigin(widgetServing);
 
 // Self-service routes come before `/v1/public/:bookingKey`, which would otherwise read `self-service` as a key.
 // The token names one reservation of one venue, so these routes take neither id.
-const selfServiceToken = (c: any) => c.req.header("X-Self-Service-Token") as string | undefined;
+const selfServiceToken = (c: Context<AppEnv>) => c.req.header("X-Self-Service-Token") as string | undefined;
 
-async function guestAnswer(c: any, link: Link) {
+async function guestAnswer(c: Context<AppEnv>, link: Link) {
   const target = await publicVenueOf(db, link.venueId);
   const view = target && (await guestView(db, target, link.reservationId));
   return view ? c.json(view) : error(c, "self_service_link_invalid");
@@ -377,7 +288,7 @@ app.post("/v1/public/self-service/cancel", async (c) => {
 
 // The public waitlist of ADR-0021, section 3. Like the self-service routes, the entry routes take the waitlist token
 // only, and sit above `/v1/public/:bookingKey`. Every failure of a token reads the same (C74).
-async function waitlistAnswer(c: any, venueId: string, entryId: string) {
+async function waitlistAnswer(c: Context<AppEnv>, venueId: string, entryId: string) {
   const target = await publicVenueOf(db, venueId);
   const view = target && (await waitlistGuestView(db, target, entryId));
   return view ? c.json(view) : error(c, "self_service_link_invalid");
@@ -546,9 +457,9 @@ app.post("/v1/public/:bookingKey/waitlist", async (c) => {
 // The widget page (ADR-0017 section 1). The API serves it, not Caddy, because `frame-ancestors` is per venue.
 // Not rate limited. An unknown, rotated or disabled key, and a host that is not the widget's, read alike.
 const widgetDist = () => process.env.WIDGET_DIST || defaultWidgetDist();
-const widgetNotFound = (c: any) =>
+const widgetNotFound = (c: Context<AppEnv>) =>
   c.body(notFoundHtml(c.req.query("lang"), c.req.header("accept-language")), 404, widgetHeaders([]));
-const widgetNotBuilt = (c: any) => {
+const widgetNotBuilt = (c: Context<AppEnv>) => {
   console.error(`widget page: no build in ${widgetDist()}. Run pnpm --filter @opencovers/widget build.`);
   return c.body("The booking widget is not built.", 503, {
     ...widgetHeaders([]),
@@ -556,7 +467,7 @@ const widgetNotBuilt = (c: any) => {
   });
 };
 
-const widgetFileNotFound = (c: any) =>
+const widgetFileNotFound = (c: Context<AppEnv>) =>
   c.body("Not found", 404, { "Content-Type": "text/plain; charset=utf-8", "X-Content-Type-Options": "nosniff" });
 
 // Browsers ask for /favicon.ico on every page. The widget host answers 204 (no icon, no console error) with no
@@ -685,8 +596,9 @@ app.post("/v1/account/transfer-creator", async (c) => {
   if (c.req.header("apikey")) return error(c, "forbidden");
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.userId !== "string" || body.userId === "") return error(c, "invalid_request");
+  const parsed = transferCreatorSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await transferCreator(db, user.id, body.userId);
   if (!result.ok) return error(c, result.code);
   return c.json({ creator: result.creator });
@@ -695,17 +607,13 @@ app.post("/v1/account/transfer-creator", async (c) => {
 app.post("/v1/venues", async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  // A demo visitor has the one sandbox they were given (ADR-0022).
-  if (demoMode() || !(await mayCreateVenue(db, signupMode(), user.id))) {
+  if (!(await mayCreateVenue(db, signupMode(), user.id))) {
     return error(c, "venue_creation_closed");
   }
-  const body = await c.req.json().catch(() => null);
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return error(c, "invalid_request");
-  }
-  if ("id" in body || typeof body.name !== "string" || body.name.trim() === "") {
-    return error(c, "invalid_request");
-  }
+  const parsed = createVenueSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  // Venue creation has historically treated null as the default UTC timezone.
   const timezone = body.timezone ?? undefined;
   if (timezone !== undefined && !isValidTimeZone(timezone)) return error(c, "invalid_request");
   const { id } = await createVenue(db, user.id, { name: body.name, timezone });
@@ -725,14 +633,10 @@ app.get("/v1/venues/:venueId/invitations", adminOnly, staffSessionOnly, async (c
 app.post("/v1/venues/:venueId/invitations", adminOnly, staffSessionOnly, async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (
-    !isRole(body?.role) ||
-    (body.email !== undefined && !isInvitationEmail(body.email)) ||
-    (body.expiresInHours !== undefined && !isExpiryHours(body.expiresInHours))
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = invitationSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  if (body.email !== undefined && !isInvitationEmail(body.email)) return error(c, "invalid_request");
   const { invitation, token } = await createInvitation(db, c.req.param("venueId"), user.id, {
     role: body.role,
     email: body.email,
@@ -762,8 +666,9 @@ app.get("/v1/venues/:venueId/members", adminOnly, staffSessionOnly, async (c) =>
 app.patch("/v1/venues/:venueId/members/:userId", adminOnly, staffSessionOnly, async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (!isRole(body?.role)) return error(c, "invalid_request");
+  const parsed = roleChangeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await changeMemberRole(
     db,
     c.req.param("venueId"),
@@ -842,17 +747,21 @@ app.get(BLOCKLIST, adminOnly, staffSessionOnly, queryOnly("limit", "cursor"), as
 app.post(BLOCKLIST, adminOnly, staffSessionOnly, queryOnly(), async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  const subject = parseBlocklistSubject(body);
-  const reason = parseBlocklistReason(body?.reason);
-  if (!subject || reason === undefined) return error(c, "invalid_request");
-  const result = await addToBlocklist(db, blocklistKeys, c.req.param("venueId"), user.id, subject, reason);
+  const parsed = blocklistAddSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const subject = parseBlocklistSubject(parsed.data);
+  if (!subject) return error(c, "invalid_request");
+  const result = await addToBlocklist(
+    db, blocklistKeys, c.req.param("venueId"), user.id, subject, parsed.data.reason ?? null,
+  );
   if (!result.ok) return error(c, result.code);
   return c.json({ entries: result.entries, bookedReservations: result.bookedReservations });
 });
 
 app.post(`${BLOCKLIST}/lookup`, adminOnly, staffSessionOnly, queryOnly(), async (c) => {
-  const subject = parseBlocklistSubject(await c.req.json().catch(() => null));
+  const parsed = blocklistSubjectSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const subject = parseBlocklistSubject(parsed.data);
   if (!subject) return error(c, "invalid_request");
   const result = await lookupBlocklist(db, blocklistKeys, c.req.param("venueId"), subject);
   if (!result.ok) return error(c, result.code);
@@ -876,10 +785,9 @@ app.delete(`${BLOCKLIST}/:entryId`, adminOnly, staffSessionOnly, queryOnly(), as
 app.post("/v1/invitations/redeem", async (c) => {
   const user = await sessionUser(c);
   if (!user) return error(c, "unauthorized");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.token !== "string" || body.token === "") {
-    return error(c, "invalid_request");
-  }
+  const parsed = invitationTokenSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const membership = await redeemInvitation(db, body.token, user);
   if (!membership) return error(c, "invalid_invitation");
   return c.json({ membership });
@@ -888,10 +796,9 @@ app.post("/v1/invitations/redeem", async (c) => {
 // Whether an invitation link still works, so the staff app can say so before asking for an account. Public like the
 // sign-up it precedes, it spends the same budget as a redemption and answers `valid` and nothing else.
 app.post("/v1/invitations/check", async (c) => {
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.token !== "string" || body.token === "") {
-    return error(c, "invalid_request");
-  }
+  const parsed = invitationTokenSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   return c.json({ valid: await invitationUsable(db, body.token) });
 });
 
@@ -905,18 +812,10 @@ app.get("/v1/auth/keys", async (c) => {
 app.post("/v1/auth/keys", async (c) => {
   const admin = await authorizeAdmin(c);
   if (admin instanceof Response) return admin;
-  const body = await c.req.json();
-  if (
-    typeof body.key !== "string" ||
-    typeof body.principal !== "string" ||
-    !isRole(body.role)
-  ) {
-    return error(c, "invalid_request");
-  }
-  const venues = body.venues === undefined ? ["*"] : body.venues;
-  if (!Array.isArray(venues) || venues.some((v: unknown) => typeof v !== "string")) {
-    return error(c, "invalid_request");
-  }
+  const parsed = instanceKeySchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  const venues = body.venues ?? ["*"];
   await addKey(db, body.key, body.principal, venues, body.role);
   return c.json({ ok: true });
 });
@@ -924,8 +823,9 @@ app.post("/v1/auth/keys", async (c) => {
 app.delete("/v1/auth/keys", async (c) => {
   const admin = await authorizeAdmin(c);
   if (admin instanceof Response) return admin;
-  const body = await c.req.json();
-  if (typeof body.key !== "string") return error(c, "invalid_request");
+  const parsed = instanceKeyRevokeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   await revokeKey(db, body.key);
   return c.json({ ok: true });
 });
@@ -934,25 +834,9 @@ app.post("/v1/venues/:venueId/reservations", async (c) => {
   const venueId = c.req.param("venueId");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (
-    hasInvalidConsent(body) ||
-    hasInvalidRating(body) ||
-    hasInvalidCommentary(body) ||
-    hasInvalidReconfirmation(body)
-  ) {
-    return error(c, "invalid_request");
-  }
-  if (
-    typeof body.date !== "string" ||
-    typeof body.time !== "string" ||
-    typeof body.partySize !== "number" ||
-    (body.tables !== undefined &&
-      (!Array.isArray(body.tables) ||
-        body.tables.some((t: unknown) => typeof t !== "string")))
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = staffReservationSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await createReservation(
     db,
     venueId,
@@ -986,16 +870,9 @@ app.post("/v1/venues/:venueId/reservations/walk-in", async (c) => {
   const venueId = c.req.param("venueId");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (typeof body.partySize !== "number") return error(c, "invalid_request");
-  if (
-    hasInvalidConsent(body) ||
-    hasInvalidRating(body) ||
-    hasInvalidCommentary(body) ||
-    body.reconfirmation !== undefined
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = staffWalkInSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await walkIn(
     db,
     venueId,
@@ -1034,8 +911,9 @@ app.get("/v1/venues/:venueId/waitlist", async (c) => {
 
 app.post("/v1/venues/:venueId/waitlist", async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (typeof body.partySize !== "number") return error(c, "invalid_request");
+  const parsed = staffWaitlistSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await addWaitlist(
     db,
     venueId,
@@ -1080,24 +958,10 @@ app.post("/v1/venues/:venueId/reservations/:id/modify", async (c) => {
   const id = c.req.param("id");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (typeof body !== "object" || Object.keys(body).length === 0) {
-    return error(c, "invalid_request");
-  }
-  if (
-    hasInvalidConsent(body) ||
-    hasInvalidRating(body) ||
-    hasInvalidCommentary(body) ||
-    hasInvalidReconfirmation(body)
-  ) {
-    return error(c, "invalid_request");
-  }
-  if (
-    (body.date !== undefined && typeof body.date !== "string") ||
-    (body.time !== undefined && typeof body.time !== "string") ||
-    (body.partySize !== undefined && (!Number.isInteger(body.partySize) || body.partySize < 1)) ||
-    (body.guest?.name !== undefined && typeof body.guest.name !== "string")
-  ) {
+  const parsed = staffModifySchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
+  if (Object.keys(body).length === 0 || (Object.keys(body).length === 1 && body.guest && Object.keys(body.guest).length === 0)) {
     return error(c, "invalid_request");
   }
   const result = await modifyReservation(
@@ -1141,10 +1005,9 @@ app.post("/v1/venues/:venueId/reservations/:id/status", async (c) => {
   const id = c.req.param("id");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json();
-  if (body.status !== "booked" && body.status !== "seated" && body.status !== "attended" && body.status !== "no_show") {
-    return error(c, "invalid_request");
-  }
+  const parsed = staffStatusSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await setStatus(db, venueId, id, body.status, key, c.get("origin"));
   return writeResponse(c, result, venueId);
 });
@@ -1278,144 +1141,7 @@ app.get("/v1/venues/:venueId/pacing", async (c) => {
   return c.json({ pacing });
 });
 
-app.get("/v1/venues/:venueId/floor-items", async (c) => {
-  const venueId = c.req.param("venueId");
-  const items = await listFloorItems(db, venueId);
-  return c.json({ items });
-});
-
-app.post("/v1/venues/:venueId/floor-items", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (typeof body.type !== "string" || body.type === "") {
-    return error(c, "invalid_request");
-  }
-  const item = await addFloorItem(db, venueId, {
-    type: body.type,
-    label: typeof body.label === "string" ? body.label : undefined,
-    posX: typeof body.posX === "number" ? body.posX : undefined,
-    posY: typeof body.posY === "number" ? body.posY : undefined,
-    width: typeof body.width === "number" ? body.width : undefined,
-    height: typeof body.height === "number" ? body.height : undefined,
-  });
-  const items = await listFloorItems(db, venueId);
-  return c.json({ items, item }, 201);
-});
-
-app.delete("/v1/venues/:venueId/floor-items/:itemId", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const itemId = c.req.param("itemId");
-  await deleteFloorItem(db, venueId, itemId);
-  const items = await listFloorItems(db, venueId);
-  return c.json({ items });
-});
-
-app.patch("/v1/venues/:venueId/floor-items/:itemId", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const itemId = c.req.param("itemId");
-  const body = await c.req.json();
-  await updateFloorItemLayout(db, venueId, itemId, {
-    x: typeof body.x === "number" ? body.x : undefined,
-    y: typeof body.y === "number" ? body.y : undefined,
-    rotation: typeof body.rotation === "number" ? body.rotation : undefined,
-    width: typeof body.width === "number" ? body.width : undefined,
-    height: typeof body.height === "number" ? body.height : undefined,
-  });
-  const items = await listFloorItems(db, venueId);
-  return c.json({ items });
-});
-
-app.get("/v1/venues/:venueId/tables", async (c) => {
-  const venueId = c.req.param("venueId");
-  const tables = await listTables(db, venueId);
-  return c.json({ tables });
-});
-
-app.post("/v1/venues/:venueId/tables", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (
-    typeof body.id !== "string" ||
-    body.id === "" ||
-    typeof body.name !== "string" ||
-    typeof body.seats !== "number" ||
-    !Number.isInteger(body.seats) ||
-    body.seats < 1
-  ) {
-    return error(c, "invalid_request");
-  }
-  await upsertTable(db, venueId, {
-    id: body.id,
-    name: body.name,
-    seats: body.seats,
-    zone: typeof body.zone === "string" ? body.zone : undefined,
-    shape: typeof body.shape === "string" ? body.shape : undefined,
-  });
-  const tables = await listTables(db, venueId);
-  return c.json({ tables });
-});
-
-app.delete("/v1/venues/:venueId/tables/:tableId", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const tableId = c.req.param("tableId");
-  await deleteTable(db, venueId, tableId);
-  const tables = await listTables(db, venueId);
-  return c.json({ tables });
-});
-
-app.patch("/v1/venues/:venueId/tables/:tableId", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const tableId = c.req.param("tableId");
-  const body = await c.req.json();
-  await updateTableLayout(db, venueId, tableId, {
-    x: typeof body.x === "number" ? body.x : undefined,
-    y: typeof body.y === "number" ? body.y : undefined,
-    rotation: typeof body.rotation === "number" ? body.rotation : undefined,
-  });
-  const tables = await listTables(db, venueId);
-  return c.json({ tables });
-});
-
-app.get("/v1/venues/:venueId/services", async (c) => {
-  const venueId = c.req.param("venueId");
-  const services = await listServices(db, venueId);
-  return c.json({ services });
-});
-
-app.post("/v1/venues/:venueId/services", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (
-    typeof body.name !== "string" ||
-    body.name === "" ||
-    typeof body.openStart !== "string" ||
-    typeof body.openEnd !== "string" ||
-    !isPartyLimit(body.minPartySize) ||
-    !isPartyLimit(body.maxPartySize) ||
-    (body.days !== undefined && parseDays(body.days) === null)
-  ) {
-    return error(c, "invalid_request");
-  }
-  const upserted = await upsertService(db, venueId, {
-    name: body.name,
-    openStart: body.openStart,
-    openEnd: body.openEnd,
-    minPartySize: body.minPartySize,
-    maxPartySize: body.maxPartySize,
-    days: body.days === undefined ? undefined : (parseDays(body.days) as number[]),
-  });
-  if (!upserted.ok) return error(c, upserted.code);
-  const services = await listServices(db, venueId);
-  return c.json({ services });
-});
-
-app.delete("/v1/venues/:venueId/services/:name", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const name = c.req.param("name");
-  await deleteService(db, venueId, name);
-  const services = await listServices(db, venueId);
-  return c.json({ services });
-});
+registerRoomRoutes(app, adminOnly);
 
 app.get("/v1/venues/:venueId/keys", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
@@ -1425,16 +1151,9 @@ app.get("/v1/venues/:venueId/keys", adminOnly, async (c) => {
 
 app.post("/v1/venues/:venueId/keys", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (
-    typeof body.key !== "string" ||
-    body.key === "" ||
-    typeof body.principal !== "string" ||
-    body.principal === "" ||
-    (body.role !== "read" && body.role !== "write")
-  ) {
-    return error(c, "invalid_request");
-  }
+  const parsed = venueKeySchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   await addVenueKey(db, venueId, body.key, body.principal, body.role, await creatorId(c));
   const keys = await listVenueKeys(db, venueId);
   return c.json({ keys }, 201);
@@ -1442,8 +1161,9 @@ app.post("/v1/venues/:venueId/keys", adminOnly, async (c) => {
 
 app.delete("/v1/venues/:venueId/keys", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (typeof body.hash !== "string") return error(c, "invalid_request");
+  const parsed = venueKeyRevokeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   await revokeVenueKey(db, venueId, body.hash);
   const keys = await listVenueKeys(db, venueId);
   return c.json({ keys });
@@ -1483,10 +1203,9 @@ app.post("/v1/venues/:venueId/guests/:guestId/merge", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
   const key = c.req.header("Idempotency-Key");
   if (!key) return error(c, "invalid_request");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.intoGuestId !== "string" || body.intoGuestId === "") {
-    return error(c, "invalid_request");
-  }
+  const parsed = mergeGuestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return error(c, "invalid_request");
+  const body = parsed.data;
   const result = await mergeGuest(db, venueId, c.req.param("guestId"), body.intoGuestId, key, c.get("principal"));
   return guestResponse(c, result, venueId);
 });
@@ -1497,21 +1216,21 @@ app.post("/v1/venues/:venueId/guests/:guestId/unmerge", adminOnly, async (c) => 
   return guestResponse(c, result, venueId);
 });
 
-async function guestResponse(c: any, result: GuestWrite, venueId: string) {
+async function guestResponse(c: Context<AppEnv>, result: GuestWrite, venueId: string) {
   if (!result.ok) return error(c, result.code);
   const guest = await getGuest(db, venueId, result.guestId);
   if (!guest) return error(c, "guest_not_found");
   return c.json(guest);
 }
 
-async function writeResponse(c: any, result: any, venueId: string) {
+async function writeResponse(c: Context<AppEnv>, result: WriteResult, venueId: string) {
   if (!result.ok) return error(c, result.code);
   const reservation = await getReservation(db, venueId, result.id);
   if (!reservation) return error(c, "reservation_not_found");
   return c.json(toApi(reservation, venueId), 200);
 }
 
-function toApi(reservation: any, venueId: string) {
+function toApi(reservation: Reservation, venueId: string) {
   return {
     id: reservation.id,
     venueId,
@@ -1543,134 +1262,24 @@ function toApi(reservation: any, venueId: string) {
   };
 }
 
-function error(c: any, code: ErrorCode) {
+function error(c: Context<AppEnv>, code: ErrorCode) {
   return c.json(errorBody(code), ERRORS[code].status);
 }
 
-app.get("/v1/venues/:venueId/config", async (c) => {
-  const venueId = c.req.param("venueId");
-  const config = await getConfig(db, venueId);
-  if (!config) return error(c, "venue_not_found");
-  return c.json(config);
-});
-
-app.put("/v1/venues/:venueId/config", adminOnly, async (c) => {
-  const venueId = c.req.param("venueId");
-  const body = await c.req.json();
-  if (body.phoneCountry != null && !toCountryCode(body.phoneCountry)) {
-    return error(c, "invalid_request");
-  }
-  const turnTimes = body.turnTimes === undefined ? undefined : parseTurnTimes(body.turnTimes);
-  if (turnTimes === null) return error(c, "invalid_request");
-  if (body.overbookingCeiling !== undefined && !isCeiling(body.overbookingCeiling)) {
-    return error(c, "invalid_request");
-  }
-  const blockedDates = body.blockedDates === undefined ? undefined : parseBlockedDates(body.blockedDates);
-  if (blockedDates === null) return error(c, "invalid_request");
-  if (body.maxAdvanceDays != null && !isMaxAdvanceDays(body.maxAdvanceDays)) return error(c, "invalid_request");
-  if (body.maxActivePerGuestPerDay != null && !isMaxActivePerGuest(body.maxActivePerGuestPerDay)) {
-    return error(c, "invalid_request");
-  }
-  const result = await setConfig(db, venueId, {
-    enabled: body.enabled,
-    noticeAddress: body.noticeAddress,
-    notificationsEnabled: typeof body.notificationsEnabled === "boolean" ? body.notificationsEnabled : undefined,
-    resendApiKey: typeof body.resendApiKey === "string" ? body.resendApiKey : undefined,
-    fromEmail: typeof body.fromEmail === "string" ? body.fromEmail : undefined,
-    slotIntervalMinutes: isPosInt(body.slotIntervalMinutes) ? body.slotIntervalMinutes : undefined,
-    leadTimeMinutes: isPosInt(body.leadTimeMinutes) ? body.leadTimeMinutes : undefined,
-    lastSeatingOffsetMinutes: isPosInt(body.lastSeatingOffsetMinutes)
-      ? body.lastSeatingOffsetMinutes
-      : undefined,
-    phoneCountry: body.phoneCountry === null ? null : toCountryCode(body.phoneCountry) ?? undefined,
-    turnTimes,
-    overbookingCeiling: body.overbookingCeiling,
-    maxAdvanceDays: body.maxAdvanceDays,
-    maxActivePerGuestPerDay: body.maxActivePerGuestPerDay,
-    blockedDates,
-  });
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.config);
-});
-
-app.get("/v1/venues/:venueId/public-profile", async (c) => {
-  const profile = await getProfile(db, c.req.param("venueId"));
-  if (!profile) return error(c, "venue_not_found");
-  return c.json(profile);
-});
-
-app.put("/v1/venues/:venueId/public-profile", adminOnly, async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return error(c, "invalid_request");
-  }
-  const input = parseProfileInput(body);
-  if (!input) return error(c, "invalid_request");
-  const result = await setProfile(db, c.req.param("venueId"), input);
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.profile);
-});
-
-app.get("/v1/venues/:venueId/online-booking", async (c) => {
-  const settings = await getOnlineBooking(db, c.req.param("venueId"));
-  if (!settings) return error(c, "venue_not_found");
-  return c.json(settings);
-});
-
-app.put("/v1/venues/:venueId/online-booking", adminOnly, async (c) => {
-  const body = await c.req.json().catch(() => null);
-  const input = parseOnlineBookingInput(body);
-  if (!input) return error(c, "invalid_request");
-  const result = await setOnlineBooking(db, c.req.param("venueId"), input);
-  if (!result.ok) return error(c, result.code);
-  return c.json({ ...result.settings, warnings: result.warnings });
-});
-
-app.post("/v1/venues/:venueId/online-booking/rotate-key", adminOnly, async (c) => {
-  const result = await rotateBookingKey(db, c.req.param("venueId"));
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.settings);
-});
-
-app.get("/v1/venues/:venueId/webhooks", async (c) => {
-  if (c.get("role") === "read") return error(c, "forbidden");
-  const webhooks = await listWebhooks(db, c.req.param("venueId"));
-  return c.json({ webhooks });
-});
-
-app.post("/v1/venues/:venueId/webhooks", async (c) => {
-  const venueId = c.req.param("venueId");
-  const body = await c.req.json().catch(() => null);
-  if (typeof body?.url !== "string") return error(c, "invalid_request");
-  const result = await createWebhook(
-    db,
-    venueId,
-    body.url,
-    webhookPolicyFromEnv(),
-    await creatorId(c),
-  );
-  if (!result.ok) return error(c, result.code);
-  return c.json(result.webhook, 201);
-});
-
-app.delete("/v1/venues/:venueId/webhooks/:webhookId", async (c) => {
-  const venueId = c.req.param("venueId");
-  const deleted = await deleteWebhook(db, venueId, c.req.param("webhookId"));
-  if (!deleted) return error(c, "webhook_not_found");
-  const webhooks = await listWebhooks(db, venueId);
-  return c.json({ webhooks });
-});
+registerVenueSettingsRoutes(app, adminOnly, creatorId);
 
 app.post("/v1/venues/:venueId/erasure", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
-  const body = await c.req.json();
+  const parsed = erasureSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success || (parsed.data.guestId === undefined && parsed.data.principal === undefined)) {
+    return error(c, "invalid_request");
+  }
+  const body = parsed.data;
   const result = await erase(db, venueId, body.guestId, body.principal, c.get("principal") as string, c.get("origin"));
   return c.json(result);
 });
 
-async function sessionUser(c: any) {
+async function sessionUser(c: Context<AppEnv>) {
   const result = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!result) return null;
   return result.user ?? null;
@@ -1678,12 +1287,12 @@ async function sessionUser(c: any) {
 
 // The staff member behind a request, or null when a key made it. Only a
 // session names a person, so a key's creations stay unattributed.
-async function creatorId(c: any): Promise<string | null> {
+async function creatorId(c: Context<AppEnv>): Promise<string | null> {
   if (c.req.header("apikey")) return null;
   return (await sessionUser(c))?.id ?? null;
 }
 
-async function authorizeAdmin(c: any): Promise<{ principal: string } | Response> {
+async function authorizeAdmin(c: Context<AppEnv>): Promise<{ principal: string } | Response> {
   const key = c.req.header("apikey");
   if (!key) return error(c, "unauthorized");
   const admin = await authenticateAdmin(db, key);
@@ -1695,44 +1304,8 @@ async function authorizeAdmin(c: any): Promise<{ principal: string } | Response>
   return { principal: admin.principal };
 }
 
-function hasInvalidConsent(body: any): boolean {
-  const consent = body?.guest?.consent;
-  return consent !== undefined && !isConsent(consent);
-}
-
-function hasInvalidRating(body: any): boolean {
-  const rating = body?.rating;
-  return rating !== undefined && rating !== null && !isRating(rating);
-}
-
-function hasInvalidReconfirmation(body: any): boolean {
-  const reconfirmation = body?.reconfirmation;
-  return reconfirmation !== undefined && !isReconfirmation(reconfirmation);
-}
-
-function hasInvalidCommentary(body: any): boolean {
-  const commentary = body?.commentary;
-  return commentary !== undefined && !isCommentary(commentary);
-}
-
-function isRole(value: unknown): value is "read" | "write" | "admin" {
-  return value === "read" || value === "write" || value === "admin";
-}
-
 function isDate(value: string): boolean {
   return isCalendarDate(value);
-}
-
-function isPartyLimit(value: unknown): boolean {
-  return value === undefined || value === null || (Number.isInteger(value) && (value as number) >= 1);
-}
-
-function isCeiling(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 1000;
-}
-
-function isPosInt(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
 export default app;

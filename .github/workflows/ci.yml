@@ -15,6 +15,26 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: biomejs/setup-biome@v2
+        with:
+          version: 2.6.8
+      # Check changed files first while legacy code is migrated to the standard rules.
+      - name: Biome lint changed source
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            biome lint --max-diagnostics=200 --changed --since=origin/main apps
+          else
+            biome lint --max-diagnostics=200 --changed --since=HEAD^ apps
+          fi
+
   # Run type checks independently of tests so the slow database suite does not
   # block quick feedback about TypeScript errors.
   typecheck:
@@ -78,7 +98,7 @@ jobs:
 
   deploy-cloud-run:
     name: Deploy OpenCovers to Cloud Run
-    needs: [typecheck, test, test-api]
+    needs: [lint, typecheck, test, test-api]
     if: >-
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&

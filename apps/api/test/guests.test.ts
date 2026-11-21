@@ -156,13 +156,16 @@ describe("guest linking on booking", () => {
     expect(await guestsOf("g-bad")).toEqual([]);
   });
 
-  it("reads a contact sent as a number as the stored text", async () => {
+  it("rejects numeric contact values instead of silently coercing phone numbers", async () => {
     await seedVenue("g-number");
-    const number = await book("g-number", { contact: 600123456 });
+    const invalid = await call("g-number", "/reservations", {
+      date: "2026-11-12", time: "21:00", partySize: 2,
+      guest: { contact: 600123456 },
+    });
+    expect(invalid.status).toBe(400);
+    expect((await invalid.json()).code).toBe("invalid_request");
     const text = await book("g-number", { contact: "600 123 456" });
-
-    expect(number.guest.guestId).toBeDefined();
-    expect(text.guest.guestId).toBe(number.guest.guestId);
+    expect(text.guest.guestId).toBeDefined();
   });
 
   it("does not match by name", async () => {

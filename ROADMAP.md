@@ -1,6 +1,6 @@
 # Roadmap
 
-OpenCovers is pre-alpha. The engine, the staff app, and the MCP server run locally and pass their tests. The public site is deployed, and a hosted demo runs at demo.opencovers.dev. The demo redeploys on pushes to `main` and is not yet open to the public, pending legal review. This roadmap has two jobs. It records where the project stands, and it lays out the road to the product depth that mature restaurant reservation platforms offer, so contributors can choose a place to work.
+OpenCovers is pre-alpha. The engine, staff app, booking widget, and MCP server are the supported applications. This roadmap has two jobs. It records where the project stands, and it lays out the road to the product depth that mature restaurant reservation platforms offer, so contributors can choose a place to work.
 
 Phases are a sequence, not a promise of dates. There is no Phase 1 or Phase 9. Numbering started at the contract in Phase 2, and the first-venue phase was dropped, so its route is a decision below. Phase 0 is a track that runs alongside the others, listed last under Now. It covers the publication of the repository, which is now public. Each phase has an exit criterion. Flags are the unit of work. Read [CONTRIBUTING.md](CONTRIBUTING.md) to claim one. Sizes (S, M, L) on the items below are first estimates. A maintainer refines them when the flag is opened, and splits any L.
 
@@ -68,10 +68,9 @@ Availability, agenda, list, pacing, and an event feed with a cursor and a retent
 - A guest blocklist on keyed hashes of contacts, managed by an admin through the API. A blocked contact cannot book (C56, C57, ADR-0018).
 - An idempotency key on every reservation and waitlist write, and a waitlist entry that is seated once under concurrent requests (C58, C59).
 - An error retry hint for agents (C34), and the MCP server published on npm as `@opencovers/mcp`.
-- Vitest and Testing Library in the staff app and the public site.
+- Vitest and Testing Library in the staff app and booking widget.
 - Signed webhooks over the event feed, with ordered, at-least-once delivery and protection against server-side request forgery. See [docs/contract/webhooks.md](docs/contract/webhooks.md).
 - A one-command deployment with Docker Compose and no hosting vendor. See [docs/deploy.md](docs/deploy.md).
-- The public site at [opencovers.dev](https://opencovers.dev).
 
 ## Now
 
@@ -95,8 +94,7 @@ Status: every item below is done.
 - Done: consent at walk-in and an edit dialog for consent and rating in the staff app. Rating and consent can be set on an attended visit.
 - Done: the React warning about an inline script, fixed by dropping the theme library.
 - Done: a hardening guide for self-hosters, in [docs/hardening.md](docs/hardening.md).
-- Done: automated tests for the staff app and the public site, run with Vitest.
-- Done: a hosted demo with one sandbox per visitor ([ADR-0022](docs/adr/0022-hosted-demo-sandbox.md)). `compose.demo.yaml` runs the same Docker images and Caddyfile at demo.opencovers.dev, with HTTPS from Caddy, and `.github/workflows/deploy-demo.yml` redeploys it on pushes to `main`. It is not yet open to the public, pending legal review.
+- Done: automated tests for the staff app and the booking widget, run with Vitest.
 
 Exit criterion: the staff app signs in and books a table against an API running from the Docker image.
 
@@ -223,7 +221,7 @@ A reservation product sends a guest a set of emails over the life of a booking. 
 | Birthday | The guest's birthday comes near. | Blocked. | Data the product does not store (a date of birth, a guest identity across bookings) and marketing consent. See the [guest-data design rule](README.md#design-rules). |
 | Welcome | A guest signs up to hear from the venue. | Blocked. | Data the product does not store (a guest identity across bookings) and marketing consent. See the [guest-data design rule](README.md#design-rules). |
 
-Two more emails are built and go to people other than the guest: the venue's notice of a new booking, and the sign-in link of the hosted demo.
+Two more emails are built and go to people other than the guest: the venue's notice of a new booking.
 
 ### Phase 14: Integrations
 

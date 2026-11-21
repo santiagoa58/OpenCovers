@@ -45,6 +45,33 @@ beforeAll(async () => {
 });
 
 describe("tables on every reservation read", () => {
+  it("rejects malformed JSON, null bodies and silently ignored fields on staff writes", async () => {
+    const valid = { date: "2026-11-12", time: "20:00", partySize: 2 };
+    for (const [path, body] of [
+      ["/reservations", null],
+      ["/reservations", { ...valid, tables: "1" }],
+      ["/reservations", { ...valid, guest: null }],
+      ["/reservations", { ...valid, partySize: 2, unknownField: true }],
+      ["/reservations/walk-in", { partySize: 2, tables: "1" }],
+      ["/waitlist", { partySize: 2, guest: { name: null } }],
+      ["/reservations/not-found/modify", null],
+      ["/reservations/not-found/modify", { guest: {} }],
+      ["/reservations/not-found/status", null],
+      ["/reservations/not-found/status", { status: "unknown" }],
+    ] as const) {
+      const res = await post(path, body);
+      expect(res.status, JSON.stringify({ path, body })).toBe(400);
+      expect((await res.json()).code).toBe("invalid_request");
+    }
+    const malformed = await app.request(`/v1/venues/${VENUE}/reservations`, {
+      method: "POST",
+      headers: { ...headers, "Idempotency-Key": "malformed-json" },
+      body: "{invalid",
+    });
+    expect(malformed.status).toBe(400);
+    expect((await malformed.json()).code).toBe("invalid_request");
+  });
+
   it("returns explicit tables sorted ascending", async () => {
     const body = await create({ tables: ["3", "10", "2"], partySize: 8 });
     expect(body.tables).toEqual(["10", "2", "3"]);

@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useUiStore } from "@/stores/ui-store";
-import { mockApi, renderWithApp, resetApiMocks } from "@/test/mock-api";
+import { renderWithApp, resetApiMocks } from "@/test/mock-api";
 
 const signInEmail = vi.hoisted(() => vi.fn());
 
@@ -17,7 +17,6 @@ describe("Sign-in in Spanish", () => {
   beforeEach(() => {
     signInEmail.mockReset();
     useUiStore.setState({ locale: "es" });
-    mockApi({ "GET /api/demo/status": { body: { enabled: false, googleEnabled: false } } });
   });
   afterEach(resetApiMocks);
 

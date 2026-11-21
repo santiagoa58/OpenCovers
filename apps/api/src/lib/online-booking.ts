@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { services, tables, venueOnlineBooking, venues } from "../db/schema";
 import type { Db, DbTx } from "./venue";
 import { isFrameAncestor } from "./widget-page";
-import { isSandboxVenue } from "../demo/limits";
 import { contrast } from "./contrast";
 
 export const LOCALES = ["es", "en", "ca", "fr", "de", "it", "pt"] as const;
@@ -151,6 +150,7 @@ export function normalizeOrigin(v: unknown): string | null {
  * scheme may be in any case (`HTTPS://` reads as `https`), and the value is stored as sent.
  */
 export function isPrivacyNoticeUrl(v: unknown): v is string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in user-supplied URLs.
   if (typeof v !== "string" || v.length > MAX_LOGO_URL || /[\s\x00-\x1f\x7f]/.test(v)) return false;
   if (!/^https:\/\//i.test(v)) return false;
   const authority = v.slice(8).split(/[/?#]/, 1)[0]!;
@@ -192,6 +192,7 @@ function parseTheme(v: unknown): Theme | null {
       out[k] = val as (typeof FONTS)[number];
     } else if (k === "logoUrl") {
       if (val === null) continue;
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in user-supplied URLs.
       if (typeof val !== "string" || val.length > MAX_LOGO_URL || /[\s\x00-\x1f\x7f]/.test(val)) return null;
       try {
         const u = new URL(val);
@@ -214,11 +215,20 @@ const INT_FIELDS = [
   ["maxOpenBookingsPerContact", 1, 20, true],
 ] as const;
 
-/** Parses a request body. Returns null when any present field is invalid. Absent fields stay absent, null resets. */
+const BOOLEAN_FIELDS = ["enabled", "askConsent", "showServiceNames", "waitlistEnabled"] as const;
+const INPUT_FIELDS = new Set([
+  ...BOOLEAN_FIELDS,
+  ...INT_FIELDS.map(([name]) => name),
+  "allowedOrigins", "services", "weekdays", "confirmationMode", "locale", "theme", "privacyNoticeUrl", "publicZones",
+]);
+
+/** Parses a request body. Returns null when invalid. Absent fields remain absent; null resets nullable settings. */
 export function parseOnlineBookingInput(body: unknown): OnlineBookingInput | null {
-  if (!isObject(body) || Object.keys(body).length === 0) return null;
+  if (!isObject(body) || Object.keys(body).length === 0 || Object.keys(body).some((key) => !INPUT_FIELDS.has(key))) {
+    return null;
+  }
   const out: OnlineBookingInput = {};
-  for (const key of ["enabled", "askConsent", "showServiceNames", "waitlistEnabled"] as const) {
+  for (const key of BOOLEAN_FIELDS) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") return null;
     out[key] = body[key];
@@ -282,7 +292,8 @@ export function parseOnlineBookingInput(body: unknown): OnlineBookingInput | nul
     if (!z.every((n) => typeof n === "string" && n !== "") || new Set(z).size !== z.length) return null;
     out.publicZones = z as string[];
   }
-  return out;
+  // Never report success for an update containing only read-only properties.
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 /**
@@ -355,8 +366,6 @@ export async function setOnlineBooking(
     const before = await current(tx, venueId);
     const merged: OnlineBooking = { ...before, ...rest };
     if (theme !== undefined) merged.theme = theme ?? {};
-    // A sandbox's widget may be embedded on the demo host only: the list was set when it was built (ADR-0022, F11).
-    if (await isSandboxVenue(tx as unknown as Db, venueId)) merged.allowedOrigins = before.allowedOrigins;
     if (merged.minPartySize > merged.maxPartySize) return { ok: false, code: "invalid_request" };
     // The join sends an email, so the waitlist cannot be turned on while the venue's email is off (C68). Turning
     // email off later keeps the stored value; the public channel then reads the waitlist as off.

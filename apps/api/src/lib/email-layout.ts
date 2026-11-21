@@ -60,12 +60,9 @@ export const DEFAULT_ACCENT: EmailAccent = {
   darkOnAccent: DARK.onAccent,
 };
 
-/**
- * The mark as a PNG, served by the live site (apps/site/public). Email clients drop SVG, so it has to be a PNG,
- * and it has to be an absolute public URL. It is the 180px app icon: the white mark on a green square.
- */
-export const LOGO_URL = "https://opencovers.dev/apple-touch-icon.png";
-export const SITE_URL = "https://opencovers.dev";
+/** Email links and the PNG logo use the operator's publicly accessible staff-app origin. */
+export const SITE_URL = new URL(process.env.BETTER_AUTH_URL ?? "https://opencovers.santimade.dev").origin;
+export const LOGO_URL = `${SITE_URL}/email-logo.png`;
 
 export const BODY_PX = 16;
 

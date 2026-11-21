@@ -119,7 +119,6 @@ Option A. A new `apps/api/src/lib/email-messages.ts` holds `EMAIL_CATALOGS = { e
 | Migration | `guest_locale text` nullable with a check on the seven codes, by `pnpm db:generate`. Adding a locale later changes the check, as migration `0038` did for the venue. | No. Existing rows read null. |
 | Events, webhooks | Unchanged. Payloads stay free of guest data. | |
 | MCP | `reservation.get` and lists return API reads, so `guestLocale` shows up there. The create and modify tools' zod schemas gain it only with Q2. | No. |
-| Demo template | No new setting or screen unless Q2 adds a staff field. Then two template bookings get a non-`es` language so the hosted demo shows it (ADR-0022). | |
 
 ## 5. Staging
 
@@ -132,7 +131,7 @@ Each stage is one pull request. A contract stage changes `openapi.yaml`, `confor
 | 2 | Email catalogs: `email-messages.ts` with the reviewed locales only (`es` first; each other language is a small follow-up PR once reviewed), locale-aware `buildEmail` and `buildLinkEmail`, the parity test. Callers still pass the venue's locale, so a venue whose locale is `en` already gets English mail. | 0 | yes |
 | 3 | API: migration, store `locale` at create, reset on erasure and retention, `notifyReservation` and `resendLinks` use the stored locale. | 1, 2 | yes |
 | 4 | Widget: send `locale` on the create. | 3 | yes |
-| 5 | Optional (Q2): staff field on create and modify, staff app control, MCP schemas, demo template. Contract first within the PR. | 3 | yes |
+| 5 | Optional (Q2): staff field on create and modify, staff app control, MCP schemas. Contract first within the PR. | 3 | yes |
 | 6 | ADR-0021 stage 10 gains `locale` on the join body; its stage 11 join email uses the stage 2 catalogs. | 2 | with ADR-0021 |
 
 ADR-0017 stage 8 needs only stage 2 to send its new emails localized. Its link in the confirmation uses the stored locale once stage 3 is in. Stage 2 also removes the long dash from today's subject lines.
@@ -144,7 +143,7 @@ Venue-editable templates. SMS. Formatting times in the guest's own time zone (ti
 ## Evidence and limits
 
 - Nothing here is measured. There is no data on how many guests book in a language other than the venue's.
-- Verified in code at `c5e423b`: the files cited in Context, the create route in `apps/api/src/app.ts`, the erasure path in `apps/api/src/lib/venue.ts`, the MCP tool schemas in `apps/mcp/src/index.ts`, and the demo template.
+- Verified in code at `c5e423b`: the files cited in Context, the create route in `apps/api/src/app.ts`, the erasure path in `apps/api/src/lib/venue.ts`, the MCP tool schemas in `apps/mcp/src/index.ts`.
 - Not verified: that the production Node image has full ICU, so `Intl` dates in `ca` or `pt` read correctly. Stage 2 should pin one formatted date per locale in a test.
 - Not verified: whether Resend or receiving clients need a `Content-Language` header. Not proposed here.
 - The branch with `embed.js` passing `?lang=` was read, not run. The widget's handling of `?lang=` on `/w` is on `main` and covered by C41.
@@ -188,7 +187,7 @@ Venue-editable templates. SMS. Formatting times in the guest's own time zone (ti
 
 ## Amendment 2026-11-20: the content and the quality bar of every email
 
-The first emails of the hosted demo showed a one-line confirmation with a raw date. This amendment sets what every email carries and how that is enforced. The language rules above do not change.
+Earlier confirmation emails showed a one-line response with a raw date. This amendment sets what every email carries and how that is enforced. The language rules above do not change.
 
 - **Content.** Only data the engine holds: the venue's name, its public profile address and phone (`public_street`, `public_postal_code`, `public_locality`, `public_phone`), its theme logo and button colors, the service name, party size, status, and the start time in the venue's zone. Each is shown when set and left out when not. The profile's `public_profile_enabled` flag is not read: the guest booked there, and the address is not being published by the mail. A map link is a plain `https://www.google.com/maps/search/?api=1&query=...` URL and only when an address exists. The day is written for the locale (`martes 1 de diciembre`), and the subject names the venue, the day and the time within 60 characters.
 - **No typed text in a mail to the guest.** Confirmation, change, cancellation, the self-service link and the calendar file carry no guest name or note. The venue's `notice` goes to staff, who see the name in the agenda, and keeps it: one line of plain text in a row, control characters and line breaks turned to spaces, cut at 80 characters, HTML-escaped and never a link. The notice's subject has no name.

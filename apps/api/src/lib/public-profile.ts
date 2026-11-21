@@ -34,6 +34,11 @@ const TEXT_FIELDS = {
   cuisine: 100,
 } as const;
 
+const PROFILE_FIELDS = new Set([
+  "publicProfileEnabled", ...Object.keys(TEXT_FIELDS),
+  "country", "phone", "websiteUrl", "bookingUrl", "priceRange", "latitude", "longitude",
+]);
+
 const PHONE = /^\+?[0-9 ()./-]{5,30}$/;
 const PRICE_RANGE = /^\${1,4}$/;
 const MAX_URL = 2048;
@@ -73,6 +78,7 @@ function httpsUrl(value: unknown): string | null {
 export function parseProfileInput(body: unknown): ProfileInput | null {
   if (typeof body !== "object" || body === null || Array.isArray(body)) return null;
   const b = body as Record<string, unknown>;
+  if (Object.keys(b).length === 0 || Object.keys(b).some((key) => !PROFILE_FIELDS.has(key))) return null;
   const out: ProfileInput = {};
   if (b.publicProfileEnabled !== undefined) {
     if (typeof b.publicProfileEnabled !== "boolean") return null;

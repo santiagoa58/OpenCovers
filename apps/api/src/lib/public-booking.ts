@@ -14,9 +14,9 @@ import type { Db } from "./venue";
 const BOOKING_KEY = /^pk_[A-Za-z0-9_-]{22}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIME = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
-// A create takes `zone` (C66), checked against the venue's effective public zones by the handler. A guest modify never does.
-const REFUSED_FIELDS = ["tables", "rating", "reconfirmation"] as const;
-const MODIFY_REFUSED_FIELDS = ["date", "time", "zone", ...REFUSED_FIELDS] as const;
+// Unknown public fields are rejected; otherwise a misspelled field could silently change what a guest books.
+const CREATE_FIELDS = new Set(["date", "time", "partySize", "guest", "commentary", "zone", "locale", "honeypot", "challenge", "solution"]);
+const MODIFY_FIELDS = new Set(["version", "partySize", "commentary", "guest"]);
 
 type VenueRow = typeof venues.$inferSelect;
 
@@ -158,8 +158,8 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
  * `invalid_request`, the honeypot included, so every refusal looks the same.
  */
 export function parsePublicCreate(body: unknown, target: PublicVenue): PublicCreate | null {
-  if (!isObject(body) || !isObject(body.guest)) return null;
-  if (REFUSED_FIELDS.some((field) => body[field] !== undefined)) return null;
+  if (!isObject(body) || Object.keys(body).some((field) => !CREATE_FIELDS.has(field)) || !isObject(body.guest)) return null;
+  if (Object.keys(body.guest).some((field) => !["name", "contact", "consent"].includes(field))) return null;
   if (body.zone !== undefined && typeof body.zone !== "string") return null;
   if (body.locale !== undefined && (typeof body.locale !== "string" || !(LOCALES as readonly string[]).includes(body.locale))) {
     return null;
@@ -199,11 +199,9 @@ export interface SelfServiceModify {
 
 /** Parses a guest modify body. Returns null for anything the contract answers with `invalid_request`, `denied` included. */
 export function parseSelfServiceModify(body: unknown): SelfServiceModify | null {
-  if (!isObject(body)) return null;
-  if (MODIFY_REFUSED_FIELDS.some((field) => body[field] !== undefined)) return null;
+  if (!isObject(body) || Object.keys(body).some((field) => !MODIFY_FIELDS.has(field))) return null;
   const { version, partySize, commentary, guest } = body;
   if (typeof version !== "number" || !Number.isInteger(version) || version < 1) return null;
-  if (partySize === undefined && commentary === undefined && guest === undefined) return null;
   if (partySize !== undefined && (typeof partySize !== "number" || !Number.isInteger(partySize) || partySize < 1)) {
     return null;
   }
@@ -211,6 +209,8 @@ export function parseSelfServiceModify(body: unknown): SelfServiceModify | null 
   if (guest !== undefined && (!isObject(guest) || Object.keys(guest).some((k) => k !== "consent"))) return null;
   const consent = isObject(guest) ? guest.consent : undefined;
   if (consent !== undefined && consent !== "unknown" && consent !== "granted") return null;
+  // An empty guest object is not an update; require at least one actionable field.
+  if (partySize === undefined && commentary === undefined && consent === undefined) return null;
   return {
     version,
     partySize: partySize as number | undefined,

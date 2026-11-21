@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { StaffNoteField } from "@/components/reservation/staff-note-field";
 import { useTables } from "@/hooks/use-tables";
 import { useVenueConfig } from "@/hooks/use-venue-config";
 import { bookingMinutes } from "@/lib/planning-conflicts";
@@ -258,18 +258,11 @@ export function NewReservationDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reservation-commentary">{t("reservation.note")}</Label>
-            <Textarea
-              id="reservation-commentary"
-              maxLength={COMMENTARY_MAX}
-              placeholder={t("reservation.notePlaceholder")}
-              {...register("commentary")}
-            />
-            <p className="text-sm text-muted-foreground">
-              {t("reservation.noteHint", { max: COMMENTARY_MAX })}
-            </p>
-          </div>
+          <StaffNoteField
+            id="reservation-commentary"
+            maxLength={COMMENTARY_MAX}
+            inputProps={register("commentary")}
+          />
 
           {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
 

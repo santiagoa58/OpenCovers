@@ -185,6 +185,8 @@ describe("adding", () => {
       { contact: "" },
       { contact: "ana@example.com", reason: "threw a glass" },
       { contact: "ana@example.com", reason: 3 },
+      { contact: "ana@example.com", reson: "no_show" },
+      { contact: "ana@example.com", reason: null, unknown: true },
       { contact: "ana@example.com", guestId: "g1" },
       {},
       { guestId: "" },

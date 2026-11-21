@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRightLeftIcon, XIcon } from "lucide-react";
 import { StatusBadge } from "@/components/agenda/status-badge";
-import { ReconfirmationPill } from "@/components/preshift/pre-shift-view";
+import { ReconfirmationPill } from "@/components/preshift/reconfirmation-pill";
 import { ReservationAnnotations } from "@/components/reservation/reservation-annotations";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";

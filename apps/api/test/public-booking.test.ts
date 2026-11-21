@@ -286,18 +286,20 @@ async function makeProbe(v: Venue, time: string, partySize: number): Promise<boo
 describe("C43 public create and attribution", () => {
   it("books with engine attribution and returns the guest view", async () => {
     const v = await makeVenue();
-    const res = await create(
-      v.key,
-      body(v.key, {
-        guest: { name: "  Ana García ", contact: "Ana.Garcia@Example.com" },
-        commentary: "window seat",
-        bookedVia: "evil",
-        ownerPrincipal: "evil",
-        basis: "consent",
-        source: "x",
-        service: "lunch",
-      }),
-    );
+    const spoofed = body(v.key, {
+      guest: { name: "  Ana García ", contact: "Ana.Garcia@Example.com" },
+      commentary: "window seat",
+      bookedVia: "evil",
+      ownerPrincipal: "evil",
+      basis: "consent",
+      source: "x",
+      service: "lunch",
+    });
+    expect((await create(v.key, spoofed)).status).toBe(400);
+    const res = await create(v.key, body(v.key, {
+      guest: { name: "  Ana García ", contact: "Ana.Garcia@Example.com" },
+      commentary: "window seat",
+    }));
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
     const answer = await res.json();
@@ -343,6 +345,8 @@ describe("C43 public create and attribution", () => {
       { zone: "terrace" },
       { rating: 5 },
       { reconfirmation: "confirmed" },
+      { timee: "21:00" },
+      { guest: { name: "Ana", contact: newContact(), extra: true } },
       { guest: { name: "Ana", contact: "not a contact" } },
       { guest: { name: "   ", contact: newContact() } },
       { guest: { name: "x".repeat(101), contact: newContact() } },
@@ -687,9 +691,11 @@ describe("C43 / C55 guest locale on the public create (ADR-0024)", () => {
     const publicId = await staffId(v, contact);
     expect(await stored(publicId)).toBeNull();
 
-    const made = await staffPost(v, "/reservations", {
-      date: SATURDAY, time: "21:00", partySize: 2, guest: { name: "Staff", contact: "staff@example.com" }, guestLocale: "en", locale: "en",
-    });
+    const booking = {
+      date: SATURDAY, time: "21:00", partySize: 2, guest: { name: "Staff", contact: "staff@example.com" },
+    };
+    expect((await staffPost(v, "/reservations", { ...booking, guestLocale: "en", locale: "en" })).status).toBe(400);
+    const made = await staffPost(v, "/reservations", booking);
     expect(made.status).toBe(200);
     const staffRes = (await made.json()) as any;
     expect(staffRes.guestLocale).toBeNull();
@@ -698,11 +704,14 @@ describe("C43 / C55 guest locale on the public create (ADR-0024)", () => {
     const list = (await (await staffGet(v, "/reservations")).json()) as any;
     expect(list.reservations.map((r: any) => r.guestLocale)).toEqual([null]);
 
-    const walk = await staffPost(v, "/reservations/walk-in", { partySize: 2, date: SATURDAY, time: "21:00", guestLocale: "fr" });
+    const walkPayload = { partySize: 2, date: SATURDAY, time: "21:00" };
+    expect((await staffPost(v, "/reservations/walk-in", { ...walkPayload, guestLocale: "fr" })).status).toBe(400);
+    const walk = await staffPost(v, "/reservations/walk-in", walkPayload);
     expect(walk.status).toBe(200);
     expect(await stored(((await walk.json()) as any).id)).toBeNull();
 
-    const modified = await staffPost(v, `/reservations/${publicId}/modify`, { partySize: 3, guestLocale: "de" });
+    expect((await staffPost(v, `/reservations/${publicId}/modify`, { partySize: 3, guestLocale: "de" })).status).toBe(400);
+    const modified = await staffPost(v, `/reservations/${publicId}/modify`, { partySize: 3 });
     expect(modified.status).toBe(200);
     expect(await stored(publicId)).toBeNull();
   });
@@ -737,14 +746,19 @@ describe("C43 / C55 guest locale on the public create (ADR-0024)", () => {
     const contact = newContact();
     const { json } = await publicCreate(v, { locale: "pt", guest: { name: "Ana", contact } });
     const id = await staffId(v, contact);
+    const headers = { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID(), "X-Self-Service-Token": json.selfServiceToken };
+    const unknownLocale = await app.request("/v1/public/self-service/modify", {
+      method: "POST", headers, body: JSON.stringify({ version: 1, partySize: 3, locale: "de" }),
+    });
+    expect(unknownLocale.status).toBe(400);
     const ok = await app.request("/v1/public/self-service/modify", {
-      method: "POST",
-      headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID(), "X-Self-Service-Token": json.selfServiceToken },
-      body: JSON.stringify({ version: 1, partySize: 3, locale: "de" }),
+      method: "POST", headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+      body: JSON.stringify({ version: 1, partySize: 3 }),
     });
     expect(ok.status).toBe(200);
     expect(await stored(id)).toBe("pt");
-    expect((await staffPost(v, `/reservations/${id}/modify`, { partySize: 2, guestLocale: "fr" })).status).toBe(200);
+    expect((await staffPost(v, `/reservations/${id}/modify`, { partySize: 2, guestLocale: "fr" })).status).toBe(400);
+    expect((await staffPost(v, `/reservations/${id}/modify`, { partySize: 2 })).status).toBe(200);
     expect(await stored(id)).toBe("pt");
   });
 

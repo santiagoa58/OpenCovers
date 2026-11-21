@@ -89,10 +89,6 @@ describe("rateLimitConfigFromEnv", () => {
       public_venue: { max: 100, windowMs: 60 * 60_000 },
       self_service: { max: 60, windowMs: 15 * 60_000 },
       public_days: { max: 60, windowMs: 15 * 60_000 },
-      magic_link: { max: 1, windowMs: 60_000 },
-      magic_link_day: { max: 5, windowMs: 24 * 60 * 60_000 },
-      magic_link_ip: { max: 10, windowMs: 60 * 60_000 },
-      demo_challenge: { max: 60, windowMs: 60 * 60_000 },
       oauth_authorize: { max: 30, windowMs: 15 * 60_000 },
       oauth_token: { max: 60, windowMs: 15 * 60_000 },
     });

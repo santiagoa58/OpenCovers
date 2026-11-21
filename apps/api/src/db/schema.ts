@@ -690,40 +690,6 @@ export const waitlistLinks = pgTable(
   ],
 );
 
-// Hosted demo (ADR-0022). One sandbox venue per account. `last_sign_in_at` starts the 14-day expiry. The rows
-// vanish with the account or the venue.
-export const demoSandboxes = pgTable("demo_sandbox", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
-  venueId: text("venue_id")
-    .notNull()
-    .unique()
-    .references(() => venues.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }).notNull().defaultNow(),
-  // The visitor's address with Gmail dots and +tags removed (demo/normalize.ts). One sandbox per value (audit F4).
-  normalizedEmail: text("normalized_email").notNull().unique(),
-});
-
-// A demo visitor's contact. Deliberately not tied to the account: it outlives the sandbox. No HTTP route reads it.
-export const demoLeads = pgTable("demo_lead", {
-  // The verified address as the visitor signed in with it: where outreach goes.
-  email: text("email").primaryKey(),
-  // The same value `demo_sandbox.normalized_email` holds (demo/normalize.ts). One lead per person, however spelled.
-  normalizedEmail: text("normalized_email").notNull().unique(),
-  name: text("name"),
-  source: text("source").notNull(),
-  locale: text("locale").notNull().default("en"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
-  contactConsent: boolean("contact_consent").notNull().default(false),
-  consentTextVersion: text("consent_text_version"),
-  // Set by the unsubscribe route or by an operator. A withdrawn row is excluded from the export.
-  withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
-});
-
-
 // Tables of @better-auth/oauth-provider (ADR-0014). The plugin owns their shape;
 // keep them in step with its schema when Better Auth is upgraded.
 export const oauthClient = pgTable(

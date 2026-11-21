@@ -223,10 +223,11 @@ describe("the public channel", () => {
   });
 
   it("cannot be made to claim another channel, with a header, an API key or a body field", async () => {
-    const res = await publicCreate(
-      { "X-OpenCovers-Channel": "mcp", apikey: "origin-admin" },
-      { channel: "staff", actor: "someone", origin: { channel: "api", actor: "x" } },
-    );
+    const headers = { "X-OpenCovers-Channel": "mcp", apikey: "origin-admin" };
+    const forged = await publicCreate(headers, { channel: "staff", actor: "someone", origin: { channel: "api", actor: "x" } });
+    expect(forged.status).toBe(400);
+    // Even if callers forge auth/channel headers on a valid booking, its origin remains the public widget.
+    const res = await publicCreate(headers);
     expect(res.status).toBe(200);
     const id = (await findLink(db, (await res.json()).selfServiceToken))!.reservationId;
     expect(await trail(id)).toEqual([{ type: "created", channel: "widget", actor: null }]);

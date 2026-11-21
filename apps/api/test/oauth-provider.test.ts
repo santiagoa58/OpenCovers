@@ -12,7 +12,6 @@ import app from "../src/app";
 import { db } from "../src/db/client";
 import { migrateDb } from "../src/db/migrate";
 import { oauthAccessToken, oauthClient, oauthRefreshToken, user } from "../src/db/schema";
-import { demoSettings } from "../src/demo/settings";
 import { auth, createAuth, metadataFetcher } from "../src/lib/auth";
 import { MCP_SCOPES } from "../src/lib/mcp-remote";
 
@@ -481,7 +480,7 @@ describe("client metadata documents", () => {
   /** An auth whose metadata fetches never leave the process: every URL serves a valid document. */
   function stubbedAuth() {
     const fetched: string[] = [];
-    const instance = createAuth(demoSettings({}), {
+    const instance = createAuth({
       fetchMetadata: async (input) => {
         const url = String(input instanceof Request ? input.url : input);
         fetched.push(url);

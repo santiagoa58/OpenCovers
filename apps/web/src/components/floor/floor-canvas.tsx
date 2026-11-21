@@ -8,6 +8,7 @@ import { FloorTableCard } from "./floor-table-card";
 import { FloorItemShape } from "./floor-item-shape";
 import { guestsText } from "./guests-text";
 import { FLOOR_SKINS } from "./skins";
+import { GRID_SNAP as SNAP, snap, shapeOf, tableSize, textRoom, chairPositions } from "./geometry";
 
 export interface CanvasTable {
   id: string;
@@ -37,7 +38,6 @@ export interface CanvasItem {
 }
 
 const NODE = 80;
-const SNAP = 8;
 const MARGIN = 24;
 const MIN_HEIGHT = 480;
 // A plan that needs less shrinking than this to fit the screen is shrunk by default (a tablet). Below it the names
@@ -54,92 +54,6 @@ const HANDLE_RIGHT = "-right-2 before:-left-2 before:-right-4 hover:bg-destructi
 // Faint grain lines for wooden table tops, drawn with the theme's wood edge colour.
 const WOOD_GRAIN =
   "repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in oklab, var(--wood-edge) 25%, transparent) 6px 7px)";
-
-const snap = (v: number) => Math.round(v / SNAP) * SNAP;
-
-// Older data and the demo template say "rect" for a rectangular table.
-const shapeOf = (shape: string | undefined) => (shape === "rect" ? "rectangle" : (shape ?? "round"));
-
-function tableSize(shape: string | undefined, seats: number): { w: number; h: number } {
-  if (shape === "rectangle") return { w: 64, h: 46 };
-  if (shape === "square") return { w: 52, h: 52 };
-  // A long (banquet) table gets about 20 px per chair along each side.
-  if (shape === "long") return { w: Math.min(Math.max(Math.ceil(seats / 2) * 20 + 14, 110), 220), h: 36 };
-  if (shape === "oval") return { w: Math.min(56 + seats * 4, 96), h: 44 };
-  const d = Math.min(46 + seats * 3, 60);
-  return { w: d, h: d };
-}
-
-/**
- * The room a label drawn upright has on a table: the table's width when it lies flat, its depth when it stands on end,
- * and in between the chord a horizontal line makes across the turned table.
- */
-function labelRoom(size: { w: number; h: number }, rotation: number): number {
-  const across = Math.abs(Math.sin((rotation * Math.PI) / 180));
-  return Math.min(size.w, across < 0.001 ? size.w : size.h / across) - 6;
-}
-
-/** The width a line of text can take on a table. A round or oval top is narrower away from its middle line. */
-function textRoom(shape: string, size: { w: number; h: number }, rotation: number, lines: number): number {
-  if (shape === "round") {
-    const r = size.w / 2 - 2;
-    const reach = Math.min(lines * 5, r - 4);
-    return Math.floor(2 * Math.sqrt(r * r - reach * reach)) - 2;
-  }
-  if (shape === "oval") return Math.floor(labelRoom(size, rotation) * (lines > 2 ? 0.7 : 0.8));
-  return labelRoom(size, rotation);
-}
-
-const CHAIR_GAP = 8;
-
-function chairPositions(
-  shape: string | undefined,
-  seats: number,
-  size: { w: number; h: number },
-): { x: number; y: number }[] {
-  const pts: { x: number; y: number }[] = [];
-  if (shape === "rectangle" || shape === "long") {
-    const perSide = Math.ceil(seats / 2);
-    const span = size.w - 14;
-    for (let i = 0; i < seats; i++) {
-      if (i < perSide) {
-        pts.push({ x: -span / 2 + ((i + 0.5) / perSide) * span, y: -(size.h / 2 + CHAIR_GAP) });
-      } else {
-        pts.push({ x: span / 2 - ((i - perSide + 0.5) / perSide) * span, y: size.h / 2 + CHAIR_GAP });
-      }
-    }
-  } else if (shape === "oval") {
-    // Chairs go round the outline, a little off the ellipse so they sit beside the table edge.
-    const rx = size.w / 2 + CHAIR_GAP;
-    const ry = size.h / 2 + CHAIR_GAP;
-    for (let i = 0; i < seats; i++) {
-      const a = (i / seats) * 2 * Math.PI - Math.PI / 2;
-      pts.push({ x: Math.cos(a) * rx, y: Math.sin(a) * ry });
-    }
-  } else if (shape === "square") {
-    // Spread the chairs over the four sides (top, bottom, right, left first), centered on each side.
-    const half = size.w / 2 + CHAIR_GAP;
-    const span = size.w - 12;
-    const order = [0, 2, 1, 3];
-    for (const side of order) {
-      const count = Math.floor(seats / 4) + (order.indexOf(side) < seats % 4 ? 1 : 0);
-      for (let k = 0; k < count; k++) {
-        const along = -span / 2 + ((k + 0.5) / count) * span;
-        if (side === 0) pts.push({ x: along, y: -half });
-        else if (side === 1) pts.push({ x: half, y: along });
-        else if (side === 2) pts.push({ x: -along, y: half });
-        else pts.push({ x: -half, y: -along });
-      }
-    }
-  } else {
-    const radius = size.w / 2 + CHAIR_GAP;
-    for (let i = 0; i < seats; i++) {
-      const a = (i / seats) * 2 * Math.PI - Math.PI / 2;
-      pts.push({ x: Math.cos(a) * radius, y: Math.sin(a) * radius });
-    }
-  }
-  return pts;
-}
 
 // `last` is the latest position or size of the gesture. It is saved from here when the pointer lifts, because the
 // state that draws it can still be one move behind at that moment.
@@ -321,6 +235,7 @@ export function FloorCanvas({
   const scale = heldScale ?? (zoom === "fit" ? fit : 1);
   const scaled = scale < 1;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Canvas overflow must be remeasured after geometry or zoom changes; updateMore reads live DOM dimensions.
   useEffect(updateMore, [frameWidth, naturalWidth, scale]);
 
   return (
@@ -338,7 +253,6 @@ export function FloorCanvas({
             : { minWidth: naturalWidth, height: naturalHeight }),
           ...skin.floor(mode),
         }}
-        onDragOver={(e) => e.preventDefault()}
       >
         {items.map((item) => {
           const pos = posOf("item", item.id, item.posX, item.posY);
@@ -407,6 +321,7 @@ export function FloorCanvas({
           const seatable = mode === "view" && !t.occupied;
           return (
             <FloorTableCard key={t.id} venueId={venueId} table={t} tableNames={tableNames} enabled={Boolean(movableInView)} onMoveRequest={onMoveRequest ? () => onMoveRequest(t.id) : undefined}>
+            {/* biome-ignore lint/a11y: The canvas node is a pointer drag handle in edit mode and a keyboard-operable table target in view mode; role and label depend on mode. */}
             <div
               style={{ left: pos.x, top: pos.y, width: NODE, height: NODE }}
               className={cn(
@@ -467,9 +382,9 @@ export function FloorCanvas({
               }}
             >
               <div className="absolute inset-0" style={{ transform: `rotate(${rotation}deg)` }}>
-                {chairPositions(shape, t.seats, size).map((c, i) => (
+                {chairPositions(shape, t.seats, size).map((c) => (
                   <div
-                    key={i}
+                    key={`${c.x}:${c.y}`}
                     className={cn(
                       "absolute h-[15px] w-[17px] rounded-[5px] border border-wood-edge bg-wood",
                       skin.chairShadow,

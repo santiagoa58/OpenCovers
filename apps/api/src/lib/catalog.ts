@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { services, tables } from "../db/schema";
 import * as schema from "../db/schema";
-import { enforceSandboxCap } from "../demo/limits";
 
 export type Db = NodePgDatabase<typeof schema>;
 
@@ -70,11 +69,6 @@ export async function upsertTable(
   input: { id: string; name: string; seats: number; zone?: string; shape?: string },
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    const [known] = await tx
-      .select({ id: tables.id })
-      .from(tables)
-      .where(and(eq(tables.venueId, venueId), eq(tables.id, input.id)));
-    if (!known) await enforceSandboxCap(tx as unknown as Db, venueId, "tables");
     await tx
       .insert(tables)
       .values({
@@ -156,7 +150,6 @@ export async function upsertService(
   const days = input.days ?? current?.days ?? [...ALL_DAYS];
   const row = { openStart: input.openStart, openEnd: input.openEnd, minPartySize, maxPartySize, days };
   await db.transaction(async (tx) => {
-    if (!current) await enforceSandboxCap(tx as unknown as Db, venueId, "services");
     await tx
       .insert(services)
       .values({ venueId, name: input.name, ...row })

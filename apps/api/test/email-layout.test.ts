@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { magicLinkEmail } from "../src/lib/auth";
 import { DEFAULT_ACCENT, escapeHtml, LOGO_URL, renderEmailHtml, renderEmailText } from "../src/lib/email-layout";
 import { buildEmail, buildLinkEmail, sendEmail } from "../src/lib/mailer";
 
@@ -103,18 +102,7 @@ describe("email layout", () => {
     expect(text).toContain("Los enlaces anteriores ya no funcionan.");
   });
 
-  it("builds the magic link fully branded", () => {
-    const url = "https://demo.example/api/auth/magic-link/verify?token=t&callbackURL=%2F";
-    const es = magicLinkEmail("es-ES", url);
-    expect(es.subject).toBe("Tu enlace para entrar en la demo de OpenCovers");
-    expect(es.text).toContain(`Entrar en la demo: ${url}`);
-    expect(es.text).toContain("Si no lo has pedido tú, ignora este mensaje.");
-    expect(es.html).toContain(LOGO_URL);
-    expect(es.html).toContain(">https://demo.example/api/auth/magic-link/verify?token=t&amp;callbackURL=%2F</a>");
-    expect(es.html).toContain('lang="es"');
-    expect(magicLinkEmail("en", url).html).toContain('lang="en"');
-    expect(magicLinkEmail("fr", url).subject).toBe("Your link to the OpenCovers demo");
-  });
+
 });
 
 describe("sendEmail", () => {
