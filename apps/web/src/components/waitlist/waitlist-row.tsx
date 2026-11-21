@@ -25,10 +25,10 @@ export function WaitlistRow({
       className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[2rem_minmax(0,1fr)_4rem_7rem_8rem_auto] md:gap-x-4"
     >
       <span
-        aria-label={t("waitlist.position", { position })}
         className="flex size-8 items-center justify-center rounded-full bg-muted font-display text-sm tabular-nums"
       >
-        {position}
+        <span className="sr-only">{t("waitlist.position", { position })}</span>
+        <span aria-hidden="true">{position}</span>
       </span>
       <div className="flex min-w-0 items-center gap-3">
         <Avatar className="size-9">
