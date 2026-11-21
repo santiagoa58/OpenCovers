@@ -79,11 +79,11 @@ gcloud run deploy "$SERVICE" \
   --execution-environment=gen2 --min-instances=0 --max-instances=1 \
   --cpu-throttling --concurrency=20 --timeout=120 \
   --service-account="$SA_EMAIL" --allow-unauthenticated \
+  --container=web --image="$WEB_IMAGE" --port=8080 --memory=256Mi \
+  --set-env-vars='SITE_ADDRESS=:8080,API_UPSTREAM=localhost:3000' \
   --container=api --image="$API_IMAGE" --memory=512Mi \
   --set-secrets="DATABASE_URL=${DB_SECRET}:latest,BETTER_AUTH_SECRET=${AUTH_SECRET}:latest,BLOCKLIST_KEY=${BLOCKLIST_SECRET}:latest" \
   --set-env-vars='SIGNUP=closed,TRUST_PROXY=true,RATE_LIMIT=on,BETTER_AUTH_URL=https://placeholder.invalid,TRUSTED_ORIGINS=https://placeholder.invalid' \
-  --container=web --image="$WEB_IMAGE" --port=8080 --memory=256Mi \
-  --set-env-vars='SITE_ADDRESS=:8080,API_UPSTREAM=localhost:3000' \
   --quiet
 
 APP_URL="$(gcloud run services describe "$SERVICE" \
