@@ -21,7 +21,7 @@ const RECONFIRMATION: Record<Exclude<Reconfirmation, "none">, { labelKey: Messag
   no_answer: { labelKey: "preshift.reconfirmation.noAnswer", tone: "warning" },
 };
 
-/** Contextual Pre-shift section of the Floor plan; date and time come from the floor controls. */
+/** Contextual reservation details in the Floor plan; date and time come from the floor controls. */
 export function PreShiftView({
   venueId,
   date,
@@ -50,10 +50,10 @@ export function PreShiftView({
   const reservedIds = new Set(floorTables.filter((table) => table.occupied).map((table) => table.reservationId));
 
   return (
-    <section aria-labelledby="floor-pre-shift-title" className="space-y-4 border-t pt-6 print:border-0 print:pt-0">
+    <section aria-labelledby="floor-reservation-details-title" className="space-y-4 border-t pt-6 print:border-0 print:pt-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="floor-pre-shift-title" className="font-display text-2xl">{t("preshift.title")}</h2>
+          <h2 id="floor-reservation-details-title" className="font-display text-2xl">{t("preshift.title")}</h2>
           <p className="mt-1 text-sm text-muted-foreground print:hidden">
             {t("preshift.subtitle")}
           </p>

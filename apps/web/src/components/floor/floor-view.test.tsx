@@ -71,7 +71,7 @@ describe("FloorView", () => {
     expect(screen.getByText("Viewing 16:45")).toBeInTheDocument();
   });
 
-  it("updates Pre-shift arrivals when the selected Pacing time changes", async () => {
+  it("updates reservation details when the selected Pacing time changes", async () => {
     mockApi({
       [FLOOR]: { body: { tables: [table()] } },
       [ITEMS]: { body: { items: [] } },

@@ -42,7 +42,7 @@ describe("PreShiftView in Spanish", () => {
     renderWithApp(<PreShiftView venueId="v1" date={todayIso()} time="20:30" floorTables={[]} />);
 
     expect(await screen.findByText("Ana")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Previo al servicio" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Detalles de las reservas" })).toBeInTheDocument();
     expect(screen.getByText("Mesas reservadas y llegadas en la franja horaria seleccionada.")).toBeInTheDocument();
     expect(screen.getByText("Grupos grandes (6+)")).toBeInTheDocument();
     expect(screen.queryByText("Concedido")).not.toBeInTheDocument();

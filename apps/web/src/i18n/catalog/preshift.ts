@@ -2,12 +2,12 @@ import { defineMessages } from "../define";
 
 export default defineMessages({
   en: {
-    "preshift.title": "Pre-shift",
+    "preshift.title": "Reservation details",
     "preshift.subtitle": "Table reservations in effect and arrivals in the selected time slot.",
     "preshift.service": "Service",
     "preshift.allServices": "All services",
     "preshift.print": "Print",
-    "preshift.loadWhat": "the pre-shift list",
+    "preshift.loadWhat": "reservation details",
     "preshift.empty.title": "No matching reservations",
     "preshift.empty.description": "No tables reserved or arrivals in the selected time slot.",
     "preshift.stat.reservations": "Reservations",
@@ -29,12 +29,12 @@ export default defineMessages({
     "preshift.waitlistNow": "Waitlist now ({count})",
   },
   es: {
-    "preshift.title": "Previo al servicio",
+    "preshift.title": "Detalles de las reservas",
     "preshift.subtitle": "Mesas reservadas y llegadas en la franja horaria seleccionada.",
     "preshift.service": "Servicio",
     "preshift.allServices": "Todos los servicios",
     "preshift.print": "Imprimir",
-    "preshift.loadWhat": "la lista previa al servicio",
+    "preshift.loadWhat": "los detalles de las reservas",
     "preshift.empty.title": "Sin reservas para esta hora",
     "preshift.empty.description": "No hay mesas reservadas ni llegadas en la franja horaria seleccionada.",
     "preshift.stat.reservations": "Reservas",
