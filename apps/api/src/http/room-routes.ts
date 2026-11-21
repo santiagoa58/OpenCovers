@@ -35,7 +35,7 @@ app.patch("/v1/venues/:venueId/floor-items/:itemId", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
   const itemId = c.req.param("itemId");
   const parsed = floorItemLayoutSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return sendError(c, "invalid_request");
+  if (!parsed.success || Object.keys(parsed.data).length === 0) return sendError(c, "invalid_request");
   await updateFloorItemLayout(db, venueId, itemId, parsed.data);
   const items = await listFloorItems(db, venueId);
   return c.json({ items });
@@ -68,7 +68,7 @@ app.patch("/v1/venues/:venueId/tables/:tableId", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
   const tableId = c.req.param("tableId");
   const parsed = tableLayoutSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return sendError(c, "invalid_request");
+  if (!parsed.success || Object.keys(parsed.data).length === 0) return sendError(c, "invalid_request");
   await updateTableLayout(db, venueId, tableId, parsed.data);
   const tables = await listTables(db, venueId);
   return c.json({ tables });
