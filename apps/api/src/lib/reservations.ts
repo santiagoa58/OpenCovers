@@ -1,4 +1,4 @@
-import { and, count, eq, gt, gte, inArray, lt, ne, notExists, sql } from "drizzle-orm";
+import { and, count, eq, gt, gte, inArray, lt, lte, ne, notExists, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import {
   events,
@@ -252,7 +252,7 @@ export interface Explanation {
   nearest: string[];
 }
 
-export type StatusTransition = "seated" | "attended" | "no_show";
+export type StatusTransition = "booked" | "seated" | "attended" | "no_show";
 
 export type WriteErrorCode =
   | "slot_taken"
@@ -297,7 +297,9 @@ export type CancelResult =
 const ACTIVE_STATUSES = ["booked", "seated"];
 const MODIFIABLE_STATUSES = [...ACTIVE_STATUSES, "attended"];
 const ALLOWED_TRANSITIONS: Record<StatusTransition, string[]> = {
-  seated: ["booked"],
+  // Staff may correct an accidental status change. A completed/cancelled booking is not reopened.
+  booked: ["seated", "attended", "no_show"],
+  seated: ["booked", "attended"],
   attended: ["seated"],
   no_show: ["booked"],
 };
@@ -1291,7 +1293,7 @@ export async function setStatus(
       if (!allowed || !allowed.includes(current.status)) {
         throw new ReservationError("invalid_transition");
       }
-      if (status === "seated") {
+      if (status === "seated" && current.status === "booked") {
         const held = await tx
           .select({ tableId: tableAllocations.tableId })
           .from(tableAllocations)
@@ -1300,6 +1302,14 @@ export async function setStatus(
         if (held.length === 0) throw new ReservationError("table_required");
       }
       const nextVersion = current.version + 1;
+      // Reopening a no-show or completed seating must reclaim its table atomically.
+      // PostgreSQL's exclusion constraint rejects the restoration if another party now holds it.
+      if (ACTIVE_STATUSES.includes(status) && !ACTIVE_STATUSES.includes(current.status)) {
+        const held = await tx.select({ tableId: tableAllocations.tableId })
+          .from(tableAllocations).where(eq(tableAllocations.reservationId, id)).limit(1);
+        if (held.length === 0) throw new ReservationError("table_required");
+        await tx.update(tableAllocations).set({ active: true }).where(eq(tableAllocations.reservationId, id));
+      }
       await tx.update(reservations).set({ status, version: nextVersion }).where(eq(reservations.id, id));
       if (!ACTIVE_STATUSES.includes(status)) {
         await tx.update(tableAllocations).set({ active: false }).where(eq(tableAllocations.reservationId, id));
@@ -1310,6 +1320,7 @@ export async function setStatus(
     });
     return { ok: true, id, version };
   } catch (error) {
+    if (isExclusionViolation(error)) return { ok: false, code: "slot_taken" };
     if (error instanceof ReservationError) return { ok: false, code: error.code };
     throw error;
   }
@@ -1458,7 +1469,7 @@ export async function getFloorPlan(
             eq(tableAllocations.venueId, venueId),
             eq(tableAllocations.tableId, t.id),
             eq(tableAllocations.active, true),
-            lt(tableAllocations.startsAt, point),
+            lte(tableAllocations.startsAt, point),
             gt(tableAllocations.endsAt, point),
           ),
         )
