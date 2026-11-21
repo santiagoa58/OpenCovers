@@ -13,23 +13,19 @@ export function Features() {
           className="sw rv"
           data-on={on[i]}
           style={{ ...d(0), "--on": b.on } as CSSProperties}
-          onClick={() => toggle(i)}
         >
           <div className="txt">
             <h2 className="s">{b.s}</h2>
             <p className="c">{b.c}</p>
           </div>
+          <span className="tg" aria-hidden="true" />
           <button
             type="button"
-            role="switch"
-            aria-checked={on[i]}
+            className="sw-action"
             aria-label={b.s}
-            className="tg"
+            aria-pressed={on[i]}
+            onClick={() => toggle(i)}
             data-ui
-            onClick={(e) => {
-              e.stopPropagation();
-              toggle(i);
-            }}
           />
         </div>
       ))}
