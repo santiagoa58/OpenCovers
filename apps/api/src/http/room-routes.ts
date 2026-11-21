@@ -3,7 +3,7 @@ import { db } from "../db/client";
 import { sendError } from "./send-error";
 import { floorItemSchema, floorItemLayoutSchema, tableSchema, tableLayoutSchema, serviceSchema } from "./room-schemas";
 import { addFloorItem, deleteFloorItem, listFloorItems, updateFloorItemLayout } from "../lib/floor-items";
-import { deleteService, deleteTable, listServices, listTables, updateTableLayout, upsertService, upsertTable } from "../lib/catalog";
+import { deleteService, deleteTable, listServices, listTables, parseDays, updateTableLayout, upsertService, upsertTable } from "../lib/catalog";
 import type { AppEnv } from "./types";
 
 /** Register room/table/service routes in their original order under staff venue auth. */
@@ -84,7 +84,10 @@ app.post("/v1/venues/:venueId/services", adminOnly, async (c) => {
   const venueId = c.req.param("venueId");
   const parsed = serviceSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return sendError(c, "invalid_request");
-  const upserted = await upsertService(db, venueId, parsed.data);
+  // The catalog keeps the existing uniqueness check and weekday ordering.
+  const days = parsed.data.days === undefined ? undefined : parseDays(parsed.data.days);
+  if (days === null) return sendError(c, "invalid_request");
+  const upserted = await upsertService(db, venueId, { ...parsed.data, days });
   if (!upserted.ok) return sendError(c, upserted.code);
   const services = await listServices(db, venueId);
   return c.json({ services });
