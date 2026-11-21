@@ -21,6 +21,20 @@ gcloud services enable iam.googleapis.com iamcredentials.googleapis.com \
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 [[ -n "$PROJECT_NUMBER" ]] || { echo 'Cannot determine project number.' >&2; exit 1; }
 
+# New identities can take a short time to become visible to IAM.
+retry_binding() {
+  local attempt
+  for attempt in 1 2 3 4 5 6; do
+    if "$@"; then return 0; fi
+    if [[ "$attempt" == "6" ]]; then
+      echo 'IAM binding failed after retries. Check the preceding permission error.' >&2
+      return 1
+    fi
+    echo "IAM not ready yet; retrying ($attempt/6)..." >&2
+    sleep 10
+  done
+}
+
 if ! gcloud iam service-accounts describe "$DEPLOYER_EMAIL" \
   --project="$PROJECT_ID" >/dev/null 2>&1; then
   gcloud iam service-accounts create "$DEPLOYER_NAME" \
@@ -49,20 +63,20 @@ fi
 # Only workflows from this specific repo, as restricted by the provider to main,
 # may impersonate this dedicated deployment identity.
 PRINCIPAL="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_REPO}"
-gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_EMAIL" \
+retry_binding gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_EMAIL" \
   --project="$PROJECT_ID" --member="$PRINCIPAL" \
   --role='roles/iam.workloadIdentityUser' --quiet >/dev/null
 
 # Deploy the Cloud Run service; permit using its existing runtime identity.
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+retry_binding gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${DEPLOYER_EMAIL}" \
   --role='roles/run.admin' --quiet >/dev/null
-gcloud iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
+retry_binding gcloud iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
   --project="$PROJECT_ID" --member="serviceAccount:${DEPLOYER_EMAIL}" \
   --role='roles/iam.serviceAccountUser' --quiet >/dev/null
 
 # The deployer can push images to this repo, not every Artifact Registry repo.
-gcloud artifacts repositories add-iam-policy-binding "$ARTIFACT_REPO" \
+retry_binding gcloud artifacts repositories add-iam-policy-binding "$ARTIFACT_REPO" \
   --project="$PROJECT_ID" --location="$REGION" \
   --member="serviceAccount:${DEPLOYER_EMAIL}" \
   --role='roles/artifactregistry.writer' --quiet >/dev/null
