@@ -30,4 +30,6 @@ WORKDIR /app/apps/api
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm db:migrate && pnpm start"]
+# Schema migrations run as a Cloud Run Job before each deployment.
+# Starting the API must not wait on database migrations.
+CMD ["pnpm", "start"]

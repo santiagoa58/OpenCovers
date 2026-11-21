@@ -81,17 +81,43 @@ if [[ "$SKIP_BUILD" != "1" ]]; then
     --substitutions="_API_IMAGE=${API_IMAGE},_WEB_IMAGE=${WEB_IMAGE}" --quiet
 fi
 
-# On updates, reuse the existing service URL so no placeholder revision is
-# needed. PUBLIC_URL selects the canonical custom HTTPS origin when mapped.
-EXISTING_URL="$(gcloud run services describe "$SERVICE" \
-  --project "$PROJECT_ID" --region "$REGION" \
-  --format='value(status.url)' 2>/dev/null || true)"
-APP_ORIGIN="${PUBLIC_URL:-${EXISTING_URL:-https://placeholder.invalid}}"
+# Preserve the existing Better Auth URL on routine deploys. Cloud Run has
+# multiple valid run.app hostname formats; status.url can differ from the
+# hostname users registered against. Changing baseURL silently breaks auth.
+command -v jq >/dev/null
+EXISTING_CONFIG="$(gcloud run services describe "$SERVICE" \
+  --project "$PROJECT_ID" --region "$REGION" --format=json 2>/dev/null || true)"
+EXISTING_URL="$(printf '%s' "$EXISTING_CONFIG" | jq -r '.status.url // empty')"
+EXISTING_AUTH_ORIGIN="$(printf '%s' "$EXISTING_CONFIG" | jq -r \
+  '[.spec.template.spec.containers[]? | select(.name=="api") | .env[]? | select(.name=="BETTER_AUTH_URL") | .value][0] // empty')"
+EXISTING_TRUSTED_ORIGINS="$(printf '%s' "$EXISTING_CONFIG" | jq -r \
+  '[.spec.template.spec.containers[]? | select(.name=="api") | .env[]? | select(.name=="TRUSTED_ORIGINS") | .value][0] // empty')"
+
+# Never switch Better Auth to a pending certificate / unready custom domain.
+# This allows CI to deploy normally even when the repository's PUBLIC_URL
+# variable was configured before Google finishes certificate provisioning.
+if [[ -n "${PUBLIC_URL:-}" ]]; then
+  if ! curl --fail --silent --show-error --max-time 20 \
+    --output /dev/null "${PUBLIC_URL%/}/health"; then
+    echo "Public URL not serving a healthy HTTPS endpoint yet; preserving the existing Better Auth origin." >&2
+    PUBLIC_URL=""
+  fi
+fi
+if [[ -z "${PUBLIC_URL:-}" && -n "$EXISTING_URL" && -z "$EXISTING_AUTH_ORIGIN" ]]; then
+  echo 'Cannot read the existing Better Auth origin; refusing to change it. Set PUBLIC_URL explicitly after checking HTTPS.' >&2
+  exit 1
+fi
+APP_ORIGIN="${PUBLIC_URL:-${EXISTING_AUTH_ORIGIN:-${EXISTING_URL:-https://placeholder.invalid}}}"
 APP_ORIGIN="${APP_ORIGIN%/}"
 case "$APP_ORIGIN" in
   https://*) ;;
   *) echo 'PUBLIC_URL must be an HTTPS origin, without a path.' >&2; exit 1 ;;
 esac
+
+TRUSTED_ORIGINS="${EXISTING_TRUSTED_ORIGINS:-$APP_ORIGIN}"
+if [[ ",$TRUSTED_ORIGINS," != *",$APP_ORIGIN,"* ]]; then
+  TRUSTED_ORIGINS="${TRUSTED_ORIGINS},${APP_ORIGIN}"
+fi
 
 # For a new service, keep registration closed until the real origin is known.
 # Every deployment defaults to closed so CI cannot accidentally reopen signup.
@@ -101,18 +127,22 @@ case "$SIGNUP" in
   *) echo 'SIGNUP must be closed or first-user.' >&2; exit 1 ;;
 esac
 
-# IMPORTANT: all gcloud-wide and service flags (including --quiet) must occur
-# BEFORE --container. Everything after --container is container-scoped.
+# IMPORTANT: global flags must precede --container; later flags are
+# container-scoped. Wait for the API startup probe before starting Caddy,
+# avoiding transient /api and /health proxy failures on cold starts.
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT_ID" --region "$REGION" --platform=managed \
   --execution-environment=gen2 --min-instances=0 --max-instances=1 \
   --cpu-throttling --concurrency=20 --timeout=120 \
   --service-account="$SA_EMAIL" --allow-unauthenticated --quiet \
   --container=web --image="$WEB_IMAGE" --port=8080 --memory=256Mi \
+  --depends-on=api \
   --set-env-vars='SITE_ADDRESS=:8080,API_UPSTREAM=localhost:3000' \
   --container=api --image="$API_IMAGE" --memory=512Mi \
+  --command=pnpm --args=start \
+  --startup-probe='tcpSocket.port=3000,periodSeconds=2,timeoutSeconds=2,failureThreshold=60' \
   --set-secrets="DATABASE_URL=${DB_SECRET}:latest,BETTER_AUTH_SECRET=${AUTH_SECRET}:latest,BLOCKLIST_KEY=${BLOCKLIST_SECRET}:latest" \
-  --set-env-vars="SIGNUP=${SIGNUP},TRUST_PROXY=true,RATE_LIMIT=on,BETTER_AUTH_URL=${APP_ORIGIN},TRUSTED_ORIGINS=${APP_ORIGIN}"
+  --set-env-vars="^@^PORT=3000@SIGNUP=${SIGNUP}@TRUST_PROXY=true@RATE_LIMIT=on@BETTER_AUTH_URL=${APP_ORIGIN}@TRUSTED_ORIGINS=${TRUSTED_ORIGINS}"
 
 APP_URL="$(gcloud run services describe "$SERVICE" \
   --project "$PROJECT_ID" --region "$REGION" \
@@ -125,9 +155,10 @@ APP_URL="$(gcloud run services describe "$SERVICE" \
 # First deployment has no run.app URL until Cloud Run has created the service.
 if [[ "$APP_ORIGIN" == "https://placeholder.invalid" ]]; then
   APP_ORIGIN="$APP_URL"
+  TRUSTED_ORIGINS="$APP_URL"
   gcloud run services update "$SERVICE" \
     --project "$PROJECT_ID" --region "$REGION" --quiet --container=api \
-    --update-env-vars="BETTER_AUTH_URL=${APP_ORIGIN},TRUSTED_ORIGINS=${APP_ORIGIN},SIGNUP=${SIGNUP}"
+    --update-env-vars="^@^BETTER_AUTH_URL=${APP_ORIGIN}@TRUSTED_ORIGINS=${TRUSTED_ORIGINS}@SIGNUP=${SIGNUP}"
 fi
 
 printf '\nImage tag: %s\nService URL: %s\nCanonical origin: %s\nHealth: %s/health\nSignup: %s\n' \
