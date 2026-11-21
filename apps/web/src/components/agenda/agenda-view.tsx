@@ -17,7 +17,7 @@ import { EditReservationDialog } from "@/components/reservation/edit-reservation
 import { ReservationTraceDialog } from "@/components/reservation/reservation-trace-dialog";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
 import { EmptyState } from "@/components/empty-state";
-import { LoadError } from "@/components/load-error";
+import { AsyncContent } from "@/components/async-content";
 import { useAgenda } from "@/hooks/use-agenda";
 import { useTables } from "@/hooks/use-tables";
 import { useT } from "@/i18n";
@@ -107,25 +107,29 @@ export function AgendaView({ venueId }: { venueId: string }) {
         }
       />
 
-      {isPending ? (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((n) => (
-              <Skeleton key={n} className="h-24" />
-            ))}
+      <AsyncContent
+        loading={isPending}
+        error={isError && !data ? error : null}
+        retrying={isRefetching}
+        onRetry={() => void refetch()}
+        what={t("agenda.loadWhat")}
+        empty={reservations.length === 0}
+        loadingContent={
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((n) => <Skeleton key={n} className="h-24" />)}
+            </div>
+            <Skeleton className="h-64 w-full" />
           </div>
-          <Skeleton className="h-64 w-full" />
-        </div>
-      ) : isError && !data ? (
-        <LoadError what={t("agenda.loadWhat")} error={error} retrying={isRefetching} onRetry={() => void refetch()} />
-      ) : reservations.length === 0 ? (
-        <EmptyState
-          icon={CalendarPlusIcon}
-          title={t("agenda.empty.title")}
-          description={t("agenda.empty.description")}
-        />
-      ) : (
-        <>
+        }
+        emptyContent={
+          <EmptyState
+            icon={CalendarPlusIcon}
+            title={t("agenda.empty.title")}
+            description={t("agenda.empty.description")}
+          />
+        }
+      >
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label={t("agenda.stat.reservations")} value={active.length} />
             <Stat label={t("agenda.stat.covers")} value={active.reduce((n, r) => n + r.partySize, 0)} />
@@ -158,8 +162,7 @@ export function AgendaView({ venueId }: { venueId: string }) {
               </ul>
             </section>
           ))}
-        </>
-      )}
+      </AsyncContent>
 
       {printOpen && (
         <PrintReservationsDialog venueId={venueId} date={date} initialScope="day" onClose={() => setPrintOpen(false)} />
