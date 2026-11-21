@@ -24,6 +24,7 @@ function setup(reservations: Reservation[], waitlist: unknown[] = []) {
   mockApi({
     "GET /v1/venues/v1/agenda": { body: { reservations } },
     "GET /v1/venues/v1/tables": { body: { tables: [] } },
+    "GET /v1/venues/v1/pacing": { body: { pacing: [] } },
     "GET /v1/venues/v1/services": { body: { services: [] } },
     "GET /v1/venues/v1/waitlist": { body: { entries: waitlist } },
   });
@@ -154,7 +155,7 @@ describe("PreShiftView", () => {
     );
     expect(await screen.findByText("Could not load reservation details")).toBeInTheDocument();
     expect(screen.queryByText("No matching reservations")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Print" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Print" })).toBeEnabled();
     expect(api.calls("GET", "/v1/venues/v1/reservations/missing")).toHaveLength(1);
     await (await import("@testing-library/user-event")).default.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(api.calls("GET", "/v1/venues/v1/reservations/missing").length).toBeGreaterThan(1));
@@ -165,8 +166,16 @@ describe("PreShiftView", () => {
     const print = vi.fn();
     vi.stubGlobal("print", print);
     await screen.findByText("Jane Doe");
-    await (await import("@testing-library/user-event")).default.click(screen.getByRole("button", { name: "Print" }));
+    const user = (await import("@testing-library/user-event")).default.setup();
+    await user.click(screen.getByRole("button", { name: "Print" }));
+    expect(screen.getByRole("dialog", { name: "Print reservations" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Selected time" })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Print list" }));
     expect(print).toHaveBeenCalledOnce();
+    expect(document.querySelector("[data-reservation-print-root]")).toHaveTextContent("Jane Doe");
+    expect(document.body).toHaveClass("reservation-print-active");
+    window.dispatchEvent(new Event("afterprint"));
+    expect(document.body).not.toHaveClass("reservation-print-active");
     expect(screen.getByRole("heading", { name: "Reservation details" }).closest("section"))
       .toHaveAttribute("data-print-target", "reservation-details");
   });
