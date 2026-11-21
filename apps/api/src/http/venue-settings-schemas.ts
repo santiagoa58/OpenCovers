@@ -5,7 +5,7 @@ import { turnTimesSchema } from "../lib/turn-times";
 /** Request shapes. Country codes, calendar ranges and policy rules are checked by existing domain utilities. */
 const nonNegativeInteger = z.number().int().min(0);
 
-export const venueConfigSchema = z.object({
+export const venueConfigSchema = z.strictObject({
   enabled: z.boolean().optional(),
   noticeAddress: z.string().optional(),
   notificationsEnabled: z.boolean().optional(),
