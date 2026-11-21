@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n";
 import type { Reservation } from "@/lib/api";
+import { useTimeDisplay } from "@/lib/time-format";
 
 /** Asks before cancelling, because a cancelled reservation cannot be reopened from the agenda. */
 export function CancelReservationDialog({
@@ -23,6 +24,7 @@ export function CancelReservationDialog({
   onClose: () => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   return (
     <Dialog open={reservation !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -32,12 +34,12 @@ export function CancelReservationDialog({
             {reservation
               ? reservation.guest.name
                 ? t("reservation.cancel.description", {
-                    time: reservation.time,
+                    time: displayTime(reservation.time),
                     count: reservation.partySize,
                     name: reservation.guest.name,
                   })
                 : t("reservation.cancel.descriptionUnnamed", {
-                    time: reservation.time,
+                    time: displayTime(reservation.time),
                     count: reservation.partySize,
                   })
               : null}

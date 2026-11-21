@@ -58,7 +58,7 @@ describe("EditReservationDialog", () => {
   it("sends the new consent and keeps the rating and note as they were", async () => {
     const { api, onOpenChange, user } = setup();
 
-    await user.click(screen.getAllByRole("combobox")[0]);
+    await user.click(screen.getByRole("combobox", { name: "Contact consent" }));
     await user.click(await screen.findByRole("option", { name: "Granted" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -96,7 +96,7 @@ describe("EditReservationDialog", () => {
 
   it("sends a numeric rating and clears it with null", async () => {
     const { api, user } = setup();
-    const [, rating] = screen.getAllByRole("combobox");
+    const rating = screen.getByRole("combobox", { name: "Rating" });
 
     await user.click(rating);
     await user.click(await screen.findByRole("option", { name: "5" }));
@@ -104,7 +104,7 @@ describe("EditReservationDialog", () => {
     await waitFor(() => expect(api.writes()).toHaveLength(1));
     expect((api.writes()[0].body as { rating: unknown }).rating).toBe(5);
 
-    await user.click(screen.getAllByRole("combobox")[1]);
+    await user.click(screen.getByRole("combobox", { name: "Rating" }));
     await user.click(await screen.findByRole("option", { name: "No rating" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(api.writes()).toHaveLength(2));

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PacingView } from "./pacing-view";
+import { useUiStore } from "@/stores/ui-store";
 
 function mockPacing(pacing: unknown) {
   const fetchMock = vi.fn().mockResolvedValue(
@@ -26,6 +27,7 @@ function renderView() {
 describe("PacingView", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    useUiStore.setState({ timeFormat: "24h" });
   });
 
   it("shows covers against capacity for each slot of a service", async () => {
@@ -66,4 +68,14 @@ describe("PacingView", () => {
     expect(await screen.findByText("Peak 4/4 at 13:15")).toBeInTheDocument();
     expect(screen.getByText("Nothing booked yet")).toBeInTheDocument();
   });
+  it("uses the configured 12-hour time everywhere including tooltips", async () => {
+    useUiStore.setState({ timeFormat: "12h" });
+    mockPacing([{ service: "dinner", slots: [{ time: "20:00", capacity: 10, covers: 4 }] }]);
+    renderView();
+    expect(await screen.findByText("Peak 4/10 at 8:00 PM")).toBeInTheDocument();
+    expect(screen.getByText("8:00 PM")).toBeInTheDocument();
+    expect(screen.getByTitle("8:00 PM — 4/10 covers")).toBeInTheDocument();
+    expect(screen.queryByText("20:00")).not.toBeInTheDocument();
+  });
+
 });

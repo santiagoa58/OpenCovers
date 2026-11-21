@@ -51,7 +51,7 @@ export function SlotExplanation({
         </Button>
       </PopoverAnchor>
       <PopoverContent aria-label={t("availability.why", { time: displayTime(time) })} className="space-y-2">
-        <p className="text-sm font-medium">{t("availability.why", { time })}</p>
+        <p className="text-sm font-medium">{t("availability.why", { time: displayTime(time) })}</p>
         {isPending ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-full" />

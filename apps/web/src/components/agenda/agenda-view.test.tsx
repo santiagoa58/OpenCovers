@@ -47,7 +47,10 @@ async function openRowMenu(user: ReturnType<typeof userEvent.setup>, guest = "Ja
 }
 
 describe("AgendaView actions", () => {
-  afterEach(resetApiMocks);
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+    resetApiMocks();
+  });
 
   it("lists the reservations of the day", async () => {
     setup(reservation());

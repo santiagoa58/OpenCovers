@@ -9,7 +9,7 @@ import { LoadError } from "@/components/load-error";
 import { PageHeader } from "@/components/layout/page-header";
 import { canEditSetup, useNavigation } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { TimeField } from "@/components/time-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WalkInDialog } from "@/components/reservation/walk-in-dialog";
 import { FloorCanvas } from "@/components/floor/floor-canvas";
@@ -22,16 +22,15 @@ import { useFloorItems } from "@/hooks/use-floor-items";
 import { api, type FloorTable } from "@/lib/api";
 import { useT } from "@/i18n";
 import { nowTime, todayIso } from "@/lib/date";
+import { setUrlParams, useUrlDate, useUrlTime } from "@/lib/url-state";
 import { useTimeDisplay } from "@/lib/time-format";
-import { useUiStore } from "@/stores/ui-store";
 
 export function FloorView({ venueId }: { venueId: string }) {
   const t = useT();
   const nav = useNavigation();
   const displayTime = useTimeDisplay();
-  const timeFormat = useUiStore((s) => s.timeFormat);
-  const [date, setDate] = useState(todayIso());
-  const [time, setTime] = useState(nowTime());
+  const [date, setDate] = useUrlDate();
+  const [time, setTime] = useUrlTime();
   const [seatTable, setSeatTable] = useState<FloorTable | null>(null);
   const [moveFrom, setMoveFrom] = useState<FloorTable | null>(null);
   const queryClient = useQueryClient();
@@ -67,19 +66,11 @@ export function FloorView({ venueId }: { venueId: string }) {
           actions={
             <>
               <DayNav date={date} onChange={setDate} showToday={false} />
-              <Input
-                type="time"
-                aria-label={t("floor.time")}
-                lang={timeFormat === "12h" ? "en-US" : "en-GB"}
-                value={time}
-                onChange={(e) => e.target.value && setTime(e.target.value)}
-                className="w-fit"
-              />
+              <TimeField label={t("floor.time")} value={time} onChange={setTime} />
               <Button
                 variant="outline"
                 onClick={() => {
-                  setDate(todayIso());
-                  setTime(nowTime());
+                  setUrlParams({ date: todayIso(), time: nowTime() });
                 }}
               >
                 {t("floor.now")}

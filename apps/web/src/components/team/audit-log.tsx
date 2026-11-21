@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { api, type AuditAction, type Member } from "@/lib/api";
-import { dateTime } from "@/lib/date";
+import { useDateTimeDisplay } from "@/lib/time-format";
 import { errorMessage } from "@/lib/error-message";
 import { useT, type MessageKey } from "@/i18n";
 
@@ -68,6 +68,7 @@ function Reference({ id }: { id: string | null }) {
 
 export function AuditLog({ venueId }: { venueId: string }) {
   const t = useT();
+  const displayDateTime = useDateTimeDisplay();
   const membersQuery = useQuery({
     queryKey: ["members", venueId],
     queryFn: () => api.listMembers(venueId),
@@ -133,7 +134,7 @@ export function AuditLog({ venueId }: { venueId: string }) {
                   <TableCell>
                     <Reference id={e.invitationId ?? e.blocklistEntryId} />
                   </TableCell>
-                  <TableCell>{dateTime(e.occurredAt)}</TableCell>
+                  <TableCell>{displayDateTime(e.occurredAt)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

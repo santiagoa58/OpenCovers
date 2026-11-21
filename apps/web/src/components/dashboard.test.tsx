@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useUiStore } from "@/stores/ui-store";
@@ -32,6 +32,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   resetApiMocks();
+    window.history.replaceState(null, "", "/");
   document.title = "OpenCovers";
 });
 
@@ -104,5 +105,39 @@ describe("Dashboard accessibility", () => {
     expect(screen.queryByText("No venues yet")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Create your first venue/ })).not.toBeInTheDocument();
   });
+  it("restores each dashboard tab directly from the URL after loading", async () => {
+    const screens = [
+      ["agenda", "AgendaView"],
+      ["floor", "FloorView"],
+      ["availability", "AvailabilityView"],
+      ["waitlist", "WaitlistView"],
+      ["setup", "SetupView"],
+      ["team", "TeamView"],
+    ];
+    for (const [view, content] of screens) {
+      window.history.replaceState(null, "", `/?view=${view}`);
+      const { unmount } = renderWithApp(<ThemeProvider><Dashboard /></ThemeProvider>);
+      expect(await screen.findByText(content)).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("writes tab changes to the URL and restores them on browser navigation", async () => {
+    const user = userEvent.setup();
+    renderWithApp(<ThemeProvider><Dashboard /></ThemeProvider>);
+    expect(await screen.findByText("AgendaView")).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("button", { name: "Floor plan" })[0]);
+    expect(await screen.findByText("FloorView")).toBeInTheDocument();
+    expect(window.location.search).toBe("?view=floor");
+
+    act(() => {
+      window.history.replaceState(null, "", "/?view=availability&date=2026-11-20&party=3");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(await screen.findByText("AvailabilityView")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Availability" })[0]).toHaveAttribute("aria-current", "page");
+  });
+
 });
 

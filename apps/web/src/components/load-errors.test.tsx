@@ -38,7 +38,7 @@ const SCREENS: [string, () => ReactElement, string, string][] = [
   ["the floor plan", () => <FloorView venueId="v1" />, "Could not load the floor plan", "No tables yet"],
   ["availability", () => <AvailabilityView venueId="v1" />, "Could not load availability", "No services configured"],
   ["the waitlist", () => <WaitlistView venueId="v1" />, "Could not load the waitlist", "No one is waiting"],
-  ["pacing", () => <PacingView venueId="v1" date="2026-11-21" time="17:00" onSelectTime={() => {}} />, "Could not load pacing", "No services configured"],
+  ["pacing", () => <PacingView venueId="v1" date="2026-11-21" time="17:00" onSelectTime={() => {}} />, "Could not load booking load", "No services configured"],
 ];
 
 describe.each(SCREENS)("%s when it cannot be loaded", (_what, view, title, emptyText) => {
@@ -82,10 +82,10 @@ describe("Try again", () => {
   it("stays on the error when the server is still down", async () => {
     const user = userEvent.setup();
     renderWithApp(<PacingView venueId="v1" date="2026-11-21" time="17:00" onSelectTime={() => {}} />);
-    await screen.findByText("Could not load pacing");
+    await screen.findByText("Could not load booking load");
     await user.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled());
-    expect(screen.getByText("Could not load pacing")).toBeInTheDocument();
+    expect(screen.getByText("Could not load booking load")).toBeInTheDocument();
   });
 });
 

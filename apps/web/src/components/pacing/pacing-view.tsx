@@ -155,7 +155,7 @@ function SlotColumn({
         "flex flex-col items-center gap-1.5 rounded-md p-1 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary",
         selected && "bg-primary/10 ring-2 ring-primary",
       )}
-      title={t("pacing.slotTitle", { time: slot.time, covers: slot.covers, capacity: slot.capacity })}
+      title={t("pacing.slotTitle", { time: displayTime(slot.time), covers: slot.covers, capacity: slot.capacity })}
     >
       <div className="flex h-20 w-full items-end overflow-hidden rounded-md bg-muted/60">
         {slot.covers > 0 && (

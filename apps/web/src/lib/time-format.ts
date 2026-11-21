@@ -1,4 +1,5 @@
 import { useUiStore, type TimeFormat } from "@/stores/ui-store";
+import { dateTime } from "@/lib/date";
 
 /** Human-readable clock time; reservation APIs keep the original HH:mm value. */
 export function formatClockTime(time: string, format: TimeFormat): string {
@@ -17,4 +18,10 @@ export function formatClockRange(start: string, end: string, format: TimeFormat)
 export function useTimeDisplay(): (time: string) => string {
   const format = useUiStore((state) => state.timeFormat);
   return (time: string) => formatClockTime(time, format);
+}
+
+/** Formats timestamps using the same time preference as clock labels. */
+export function useDateTimeDisplay(): (iso: string, options?: Intl.DateTimeFormatOptions) => string {
+  const format = useUiStore((state) => state.timeFormat);
+  return (iso, options) => dateTime(iso, { ...options, hour12: format === "12h" });
 }

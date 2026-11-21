@@ -85,7 +85,7 @@ export function AssignTablesDialog({
                     count: reservation.partySize,
                     name: reservation.guest.name,
                   })
-                : t("reservation.assign.summary", { time: reservation.time, count: reservation.partySize })
+                : t("reservation.assign.summary", { time: displayTime(reservation.time), count: reservation.partySize })
               : ""}
           </DialogDescription>
         </DialogHeader>

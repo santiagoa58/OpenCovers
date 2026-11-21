@@ -41,7 +41,10 @@ function setup(tables: FloorTable[]) {
 }
 
 describe("FloorView", () => {
-  afterEach(resetApiMocks);
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+    resetApiMocks();
+  });
 
   it("counts free and occupied tables and the guests seated", async () => {
     setup([
@@ -78,7 +81,9 @@ describe("FloorView", () => {
     const slot = await screen.findByTestId("floor-slot-16:45");
     await user.click(slot);
     expect(slot).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByLabelText("Time")).toHaveValue("16:45");
+    expect(screen.getByRole("combobox", { name: "Time hour" })).toHaveValue("16");
+    expect(screen.getByRole("combobox", { name: "Time minute" })).toHaveValue("45");
+    expect(window.location.search).toContain("time=16%3A45");
     expect(screen.getByText("Viewing 16:45")).toBeInTheDocument();
   });
 
@@ -236,4 +241,13 @@ describe("FloorView", () => {
     setup([]);
     expect(await screen.findByText("No tables yet")).toBeInTheDocument();
   });
+  it("restores the selected day and booking-load time from a shared URL", async () => {
+    window.history.replaceState(null, "", "/?view=floor&date=2026-11-20&time=16%3A45");
+    setup([table()]);
+    expect(await screen.findByTestId("floor-slot-16:45")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Date")).toHaveValue("2026-11-20");
+    expect(screen.getByRole("combobox", { name: "Time hour" })).toHaveValue("16");
+    expect(screen.getByRole("combobox", { name: "Time minute" })).toHaveValue("45");
+  });
+
 });
