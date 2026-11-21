@@ -15,10 +15,10 @@ export function PlanningConflictsBanner({ venueId, date }: { venueId: string; da
   const tables = useTables(venueId);
   const config = useVenueConfig(venueId);
   const conflicts = useMemo(() => {
-    if (!agenda.data || !tables.data || !config.data) return [];
+    if (!agenda.data?.reservations || !tables.data?.tables || !config.data) return [];
     return planningConflicts(agenda.data.reservations, tables.data.tables, config.data.turnTimes);
   }, [agenda.data, tables.data, config.data]);
-  if (!agenda.data || !tables.data || !config.data) return null;
+  if (!agenda.data?.reservations || !tables.data?.tables || !config.data) return null;
   const duration = config.data.turnTimes?.[0]?.minutes ?? 120;
   const peakParties = peakSimultaneousParties(agenda.data.reservations, config.data.turnTimes);
   const capacityConflict = peakParties > tables.data.tables.length;
