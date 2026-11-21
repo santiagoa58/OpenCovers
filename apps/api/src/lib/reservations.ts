@@ -1467,6 +1467,42 @@ export async function pruneEvents(db: Db, venueId: string, cutoff: Date): Promis
     .where(eq(venues.id, venueId));
 }
 
+/** Availability for an entire party's seating interval, not just its arrival instant. */
+export async function getTableAvailability(
+  db: Db,
+  venueId: string,
+  date: string,
+  time: string,
+  partySize: number,
+): Promise<{ id: string; available: boolean; reservedBy?: string; reservedUntil?: string }[]> {
+  const venue = await venueOf(db, venueId);
+  if (!venue) return [];
+  const { startsAt, endsAt } = bookingWindow(venue, { date, time, partySize, zone: "", walkIn: false });
+  const [allTables, overlapping] = await Promise.all([
+    db.select({ id: tables.id }).from(tables).where(eq(tables.venueId, venueId)),
+    db.select({
+      tableId: tableAllocations.tableId,
+      guestName: reservations.guestName,
+      endsAt: tableAllocations.endsAt,
+    })
+      .from(tableAllocations)
+      .innerJoin(reservations, eq(tableAllocations.reservationId, reservations.id))
+      .where(and(
+        eq(tableAllocations.venueId, venueId),
+        eq(tableAllocations.active, true),
+        lt(tableAllocations.startsAt, endsAt),
+        gt(tableAllocations.endsAt, startsAt),
+      )),
+  ]);
+  const occupied = new Map(overlapping.map((a) => [a.tableId, a]));
+  return allTables.map(({ id }) => {
+    const held = occupied.get(id);
+    return held
+      ? { id, available: false, reservedBy: held.guestName || undefined, reservedUntil: formatTime(held.endsAt, venue.timezone) }
+      : { id, available: true };
+  });
+}
+
 export interface FloorTable {
   id: string;
   name: string;
