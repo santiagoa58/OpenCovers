@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -36,3 +37,80 @@ jobs:
       - run: pnpm test
     env:
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/opencovers_test
+
+  deploy-cloud-run:
+    name: Deploy OpenCovers to Cloud Run
+    needs: test
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      vars.OPENCOVERS_CLOUD_RUN_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: opencovers-cloud-run-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PROJECT_ID: general-api-1790809492160
+      REGION: us-east1
+      SERVICE: opencovers
+      ARTIFACT_REPO: opencovers
+      IMAGE_TAG: ${{ github.sha }}
+      SKIP_BUILD: "1"
+      PUBLIC_URL: ${{ vars.OPENCOVERS_PUBLIC_URL }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # A short-lived OIDC token for this repo's main branch; no Google keys in GitHub.
+      - id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/119503132504/locations/global/workloadIdentityPools/opencovers-github/providers/github
+          service_account: opencovers-deployer@general-api-1790809492160.iam.gserviceaccount.com
+          token_format: access_token
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: us-east1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.google-auth.outputs.access_token }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: us-east1-docker.pkg.dev/general-api-1790809492160/opencovers/api:${{ github.sha }}
+          cache-from: type=gha,scope=opencovers-api
+          cache-to: type=gha,mode=max,scope=opencovers-api
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: us-east1-docker.pkg.dev/general-api-1790809492160/opencovers/web:${{ github.sha }}
+          cache-from: type=gha,scope=opencovers-web
+          cache-to: type=gha,mode=max,scope=opencovers-web
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Deploy prebuilt images to Cloud Run
+        run: bash deploy/cloudrun/deploy.sh
+
+      - name: Verify deployed health
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="$(gcloud run services describe "$SERVICE" --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')"
+          [[ "$url" == https://* ]]
+          echo "Deployed service: $url"
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors --max-time 20 "$url/health"
+          echo
