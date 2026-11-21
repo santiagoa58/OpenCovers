@@ -150,6 +150,7 @@ export function normalizeOrigin(v: unknown): string | null {
  * scheme may be in any case (`HTTPS://` reads as `https`), and the value is stored as sent.
  */
 export function isPrivacyNoticeUrl(v: unknown): v is string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in user-supplied URLs.
   if (typeof v !== "string" || v.length > MAX_LOGO_URL || /[\s\x00-\x1f\x7f]/.test(v)) return false;
   if (!/^https:\/\//i.test(v)) return false;
   const authority = v.slice(8).split(/[/?#]/, 1)[0]!;
@@ -191,6 +192,7 @@ function parseTheme(v: unknown): Theme | null {
       out[k] = val as (typeof FONTS)[number];
     } else if (k === "logoUrl") {
       if (val === null) continue;
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Reject control characters in user-supplied URLs.
       if (typeof val !== "string" || val.length > MAX_LOGO_URL || /[\s\x00-\x1f\x7f]/.test(val)) return null;
       try {
         const u = new URL(val);
