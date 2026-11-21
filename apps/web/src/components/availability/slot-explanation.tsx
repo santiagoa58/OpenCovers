@@ -5,6 +5,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
+import { useTimeDisplay } from "@/lib/time-format";
 
 /**
  * An unavailable time slot. It stays muted but is clickable: a click opens a popover that asks
@@ -24,6 +25,7 @@ export function SlotExplanation({
   onPickNearest: (time: string) => void;
 }) {
   const t = useT();
+  const displayTime = useTimeDisplay();
   const [open, setOpen] = useState(false);
   const { data, isPending, isError } = useQuery({
     queryKey: ["availability-explain", venueId, date, time, partySize],
@@ -45,10 +47,10 @@ export function SlotExplanation({
           onClick={() => setOpen((v) => !v)}
           className="h-10 border-transparent bg-muted/60 tabular-nums text-muted-foreground line-through"
         >
-          {time}
+          {displayTime(time)}
         </Button>
       </PopoverAnchor>
-      <PopoverContent aria-label={t("availability.why", { time })} className="space-y-2">
+      <PopoverContent aria-label={t("availability.why", { time: displayTime(time) })} className="space-y-2">
         <p className="text-sm font-medium">{t("availability.why", { time })}</p>
         {isPending ? (
           <div className="space-y-2">
@@ -80,7 +82,7 @@ export function SlotExplanation({
                         onPickNearest(nearest);
                       }}
                     >
-                      {nearest}
+                      {displayTime(nearest)}
                     </Button>
                   ))}
                 </div>
