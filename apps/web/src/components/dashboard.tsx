@@ -68,13 +68,14 @@ export function Dashboard() {
     return () => {
       document.title = "OpenCovers";
     };
-  }, [active, venueName, t]);
+  }, [active, venueName]);
 
   const mainRef = useRef<HTMLElement>(null);
 
   return (
     <NavigationProvider value={navigation}>
       <div className="flex min-h-dvh">
+        {/* biome-ignore lint/a11y/useValidAnchor: Skip link deliberately focuses the landmark without mutating the URL fragment used by invitations. */}
         <a
           href="#main-content"
           onClick={(e) => {
