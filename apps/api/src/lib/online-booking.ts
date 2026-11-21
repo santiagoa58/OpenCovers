@@ -220,6 +220,7 @@ const INPUT_FIELDS = new Set([
   ...BOOLEAN_FIELDS,
   ...INT_FIELDS.map(([name]) => name),
   "allowedOrigins", "services", "weekdays", "confirmationMode", "locale", "theme", "privacyNoticeUrl", "publicZones",
+  "bookingKey", // Read-only legacy property: allow it alongside updates but never persist it.
 ]);
 
 /** Parses a request body. Returns null when invalid. Absent fields remain absent; null resets nullable settings. */
@@ -292,7 +293,8 @@ export function parseOnlineBookingInput(body: unknown): OnlineBookingInput | nul
     if (!z.every((n) => typeof n === "string" && n !== "") || new Set(z).size !== z.length) return null;
     out.publicZones = z as string[];
   }
-  return out;
+  // Never report success for an update containing only read-only properties.
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 /**
